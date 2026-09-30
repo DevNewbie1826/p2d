@@ -21,7 +21,7 @@ function parseArgs(argv) {
   for (let i = 0; i < argv.length; i++) {
     const a = argv[i];
     if (a === "--help" || a === "-h") {
-      process.stdout.write("usage: gen_image.mjs --prompt-file FILE | --prompt TEXT --out OUT.png [--size 1024x1024|1536x1024|1024x1536] [--quality high] [--ref FILE ...] [--mask MASK.png] [--model M] [--effort E] [--auth PATH]\n");
+      process.stdout.write("usage: gen_image.mjs --prompt-file FILE | --prompt TEXT --out OUT.png [--size 1024x1024|1536x1024|1024x1536] [--quality high] [--ref FILE ...] [--mask MASK.png] [--model M] [--effort E] [--auth PATH] [--done-file PATH]\n");
       process.exit(0);
     }
     if (!a.startsWith("--")) throw new Error(`Unexpected argument: ${a}`);
@@ -153,7 +153,13 @@ async function main() {
   mkdirSync(dirname(outPath), { recursive: true });
   const buf = Buffer.from(image, "base64");
   writeFileSync(outPath, buf);
-  console.log(JSON.stringify({ path: outPath, size: format === "png" ? pngSize(buf) : "n/a", bytes: buf.length, model, auth: auth.source, revised_prompt: revised }, null, 2));
+  const result = JSON.stringify({ path: outPath, size: format === "png" ? pngSize(buf) : "n/a", bytes: buf.length, model, auth: auth.source, revised_prompt: revised }, null, 2);
+  if (args["done-file"]) {
+    const donePath = resolve(args["done-file"]);
+    mkdirSync(dirname(donePath), { recursive: true });
+    writeFileSync(donePath, result + "\n");
+  }
+  console.log(result);
 }
 
 main().catch((e) => {
