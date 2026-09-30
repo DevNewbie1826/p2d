@@ -21,6 +21,7 @@ COMMANDS = {
     "frames": ("frames", "Cut a generated grid into shared-scale, anchored animation frames + QC."),
     "gif": ("frames", "Animated GIF preview from frame PNGs."),
     "charset": ("charset", "Assemble an RPG Maker character sheet (2000, VX Ace, MV/MZ)."),
+    "touch": ("edit", "Set or clear individual logical pixels (small face/detail repairs) within the palette."),
     "atlas": ("preview", "Pack PNGs into one sheet with a coordinate JSON."),
     "preview": ("preview", "Contact sheet (reference-style pack view) or tile repeat preview."),
 }
