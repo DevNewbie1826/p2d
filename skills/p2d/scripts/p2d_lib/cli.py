@@ -16,6 +16,8 @@ COMMANDS = {
     "inspect": ("pixelize", "Describe an image: colors, alpha, detected pixel pitch, suggested px."),
     "raw-check": ("pixelize", "Check a raw generation: real alpha, key background, painted checkerboard."),
     "pixelize": ("pixelize", "Convert a generated image into an exact-size, palette-limited pixel asset."),
+    "split": ("split", "Cut a native NxM tile block into single tiles, pixel-exact (no resampling)."),
+    "gen": ("gen", "Generate the raw image for a reserved attempt with the bundled subscription runtime; writes a completion marker."),
     "offset": ("seam", "Roll an image by half (and write a repaint mask) to fix tile seams."),
     "check": ("checks", "QC a finished asset: size, colors, palette, alpha, seams, edges."),
     "frames": ("frames", "Cut a generated grid into shared-scale, anchored animation frames + QC."),
