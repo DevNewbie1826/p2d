@@ -163,6 +163,24 @@ class AcceptGateTest(unittest.TestCase):
         self.assertEqual(self.entry()["accepted"]["no_face"], "visored helmet")
         self.assertNotIn("face_report", self.entry()["accepted"])
 
+    def atlas(self, touch):
+        a = np.zeros((32, 32, 4), dtype=np.uint8)
+        for r in range(2):
+            for c in range(2):
+                a[r * 16 + 2:r * 16 + 14, c * 16 + 3:c * 16 + 13] = (100, 80, 60, 255)
+        if touch:
+            a[20:26, 16:18] = (100, 80, 60, 255)
+        h.save(a, self.final)
+
+    def test_animation_atlas_checks_every_cell(self):
+        self.reserve("animation", "--size", "32x32")
+        self.atlas(touch=True)
+        self.reject("r1c1", "--no-face", "test")
+        self.atlas(touch=False)
+        code, out, err = self.accept("--no-face", "test")
+        self.assertEqual(code, 0, out + err)
+        self.assertEqual(self.entry()["accepted"]["qc"]["cells"], 4)
+
     def test_empty_or_conflicting_face_options_are_rejected(self):
         self.reserve("character")
         self.reject("--no-face", "--no-face", " ")
