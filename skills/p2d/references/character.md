@@ -10,6 +10,20 @@ People, monsters and NPCs that walk on a 3/4 top-down map, delivered as RPG Make
 | 32 | 32x32 | `$name.png` 96x128 (or 8-character 384x256) | Down, Left, Right, Up | RPG Maker VX / VX Ace |
 | 48 | 48x48 | `$name.png` 144x192 (or 576x384) | Down, Left, Right, Up | RPG Maker MV / MZ |
 
+## Drawing budget per px (measured on original sprites)
+
+The frame is not the drawing: a character rarely fills its cell, and a small size is a redesign, not a shrunk illustration. Budgets from original PNGs (Alex 16, PIPOYA 32, Clockwork Raven / Character Base 48):
+
+| px | Goal | Subject in frame | Head | Eyes | Colors / frame | Shading |
+|---|---|---|---|---|---|---|
+| 16 | silhouette, omission, readability | about 12-16 wide, full frame height | about half the height | 1px dark dots (side: one), front at most 1x2 + white; helmets may use one visor slit | 8-12 | hair, scarf, boots flat; skin 1-2; cloth 1-3; no texture |
+| 32 | proportion, expression, pose | about 20-29 x 27-32 | 55-60% for chibi | about 3x5 incl. lid, 1x2 pupil | 12-16 (PIPOYA-rich style 24-40: raise `--asset-colors`) | base, shadow, light per major material |
+| 48 | material, individuality, animation-ready | about 22-35 x 40-47 | 45-60% | about 5x4: dark upper lid, white, 2-3px iris | 12-16 economical; rich styles 40+ (raise `--asset-colors`) | 3-5 bands; metal = narrow bright band + dark facet, cloth = broad folds, hair = highlights along locks |
+
+What survives each step down: silhouette, dominant color masses, face/visor placement, the one identity cue (hat peak, bow gap, shield, blade), handedness. Drop first: trim, rivets, stitching, secondary straps, fletching, tiny folds. Widen a gap that must read (bow, arm) to at least 1 real pixel. Outline: dark contour colored per material is usual; pure black is optional; boot soles and tips may meet transparency.
+
+Walking: feet on the same bottom row in every frame, head bob at most 1px, legs and arms redrawn (not the body shifted sideways).
+
 Three columns per row: step A, standing, step B. Walking plays stand, A, stand, B. A `!` prefix (charset `--object`) is for objects that should sit on the grid without the upward offset.
 
 ## Flow
@@ -19,7 +33,7 @@ Three columns per row: step A, standing, step B. Walking plays stand, A, stand, 
 Reserve `pack attempt DIR --name <char>-master --kind character --px P --prompt "..."`, then generate with `size <frame>`:
 
 ```
-An RPG Maker style JRPG overworld character sprite of <who: outfit, hair, colors, props>, facing the viewer (front view with a slight top-down tilt), standing still, full body, chibi proportions with the head about one third of the height.
+An RPG Maker style JRPG overworld character sprite of <who: outfit, hair, colors, props>, facing the viewer (front view with a slight top-down tilt), standing still, full body, chibi proportions with <head/eyes/colors/shading from the budget row for P>. <16: "a native 16-pixel redesign: few connected masses, no texture, only the identity cue"; 32: "one expression cue and a deliberate stance"; 48: "materials told apart by highlight shape, one personal asymmetry">.
 Exactly one character, centred, whole body inside the image with a clear magenta margin on every side.
 Designed as a <frame W>x<frame H> pixel grid: each pixel a flat single-color sample. Use the pack's outline convention and light direction. If the outline is continuous, hair tips, face colors and equipment remain enclosed by it; no exposed interior colors at silhouette gaps.
 Flat solid #FF00FF magenta background everywhere, no shadow, no floor, no text.
@@ -86,4 +100,4 @@ p2d.py gif DIR/work/<char>/walk@P/r0c0.png DIR/work/<char>/walk@P/r0c1.png DIR/w
 
 rm2k sheets hold 8 characters: give each character of the pack its own `--slot` in the same file. `--mirror-right` builds the right row from the left row; use it only for left-right symmetric designs (nothing held in one hand). `pack accept DIR --name <char>-walk --px P --raw RAW --file <sheet>`.
 
-Several px: finish the largest px first; each smaller px is its own walking-sheet generation with the accepted larger sheet raw as reference ("same character redrawn for a <frame> grid, simplified").
+Several px: finish the largest px first; each smaller px is its own walking-sheet generation with the accepted larger sheet raw as reference ("same character redrawn natively for a <frame> grid: keep silhouette, colors, face placement, identity cue and handedness; drop <the list above>"). Compare sizes side by side at 1x and 8x: identity visible only at 8x is a failure.

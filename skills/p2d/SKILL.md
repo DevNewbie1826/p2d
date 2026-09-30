@@ -21,7 +21,7 @@ The image model draws; the scripts turn drawings into exact pixel grids and prov
 
 - A pack is one style set in the user's project: `p2d-out/<pack>/` unless the user names a folder. `pack show DIR` if it exists, otherwise `pack init DIR --name <pack>`.
 - `px` is the tile unit: 16, 32 or 48. Take it from the request (one or several values); otherwise from pack.json; otherwise ASK and wait. Ask with `ask_user_question`, multiSelect, options 16 / 32 / 48 (recommend the one `inspect` suggests when the user gave pixel-art references). If that tool is unavailable, ask in your reply and end the turn. No generation happens before px is known; an unanswered or dismissed question is NOT an answer - never pick a default px yourself, stay stopped until the user names one. Store the answer: `pack set DIR --px 16,32`.
-- Palette: pack <= 32 colors, each asset <= 16. Source, in order: the user's existing assets (`pack palette DIR --from <files>`), a preset they name (`--preset db32|endesga-32|pico-8`), otherwise the first accepted asset of the pack (`pack palette DIR --from <accepted png>`; re-run `pixelize` for that asset afterwards).
+- Palette: pack <= 32 colors, each asset <= 16 (economical JRPG style; original detailed 32/48 packs use 24-60 per sprite - raise it with `pack set DIR --asset-colors N` only when the user asks for that richer style). Source, in order: the user's existing assets (`pack palette DIR --from <files>`), a preset they name (`--preset db32|endesga-32|pico-8`), otherwise the first accepted asset of the pack (`pack palette DIR --from <accepted png>`; re-run `pixelize` for that asset afterwards).
 - Style lock defaults: RPG Maker-style 3/4 view, light from the top-left, dark selective outline. Change them only on request: `pack set DIR --light ... --notes ...`.
 
 ## 2. Plan
@@ -54,7 +54,7 @@ Every prompt = the kind template from its reference + this pack line: `Flat rast
 
 1. Inspect the actual file, not only the requested background. For props/characters/effects, run `inspect RAW`: genuine alpha transparency uses `raw-check RAW --bg alpha` and `--bg alpha` consistently in `pixelize`/`frames`; an opaque flat key background uses `--bg key`. Do not regenerate a valid transparent PNG merely because magenta was requested. Painted checkerboards are not transparency. Opaque tile/wall/trim surfaces use `--bg none`.
 2. `pixelize RAW --kind K --size WxH --pack DIR --out DIR/assets/<name>/<name>@<px>.png --scale 8` (the kind reference gives extra flags).
-3. `check FILE --kind K --size WxH --pack DIR` must print `RESULT: PASS`.
+3. `check FILE --kind K --size WxH --pack DIR` must print `RESULT: PASS`; `NOISE_REVIEW: yes` means inspect for scattered speckle before accepting (qc.md).
 4. Read the native PNG and `@8x` PNG beside the references and accepted assets: silhouette, readability at 1x, style match, flat color cells and hard edges. Do not judge a smoothly zoomed screenshot as the source PNG. If bevel-like shading remains across logical pixels, regenerate or repair the affected color clusters; palette quantization alone cannot remove that design.
 5. `pack accept DIR --name N --px P --raw RAW --file FILE`.
 

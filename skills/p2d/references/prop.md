@@ -13,6 +13,10 @@ Single objects with a transparent background: crates, barrels, pots, chests, tab
 
 Floor objects end up touching the bottom row (pixelize `--anchor bottom`); items float centred. In the generated image the object always keeps a magenta margin on all sides so `raw-check` can see the key border. Use `--margin N` to keep empty logical pixels around the subject when it must not fill the canvas.
 
+## Shape budget (from original props)
+
+One dominant mass read at 1x, then a few planes: 2-3 planes at 16, 3-5 at 32, 4-7 at 48; 4-8 colors at 16, 5-12 at 32, 8-20 at 48 (within the pack cap). Freestanding props show a compressed top plane over a taller front. Light is a broad upper-left wedge, shadow a lower-right mass, not a glossy rim. Crystals: one dominant pointed prism with long straight facets (bright, middle, dark face). Boulders: blunt asymmetric lobes, a few broken fissures. Smaller px keeps the same major lobes and drops chips, moss specks and fine cracks.
+
 ## Prompt template
 
 ```

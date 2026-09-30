@@ -9,6 +9,10 @@ Wall faces in the RPG Maker 3/4 view: stone or brick walls, cliff faces, wooden 
 - Repeat axis: `x` (sideways). Use `xy` only when the user wants a face that also stacks upward.
 - Free-standing pillars, columns, statues or a single wall end are props (they have transparent sides), not walls.
 
+## Front-facing 3/4 construction (from original JRPG tilesets)
+
+The top is a plane (a walkable cap band in its own material), not a bright outline. The front face is darker, with vertically elongated masses and one shared crack network: 2-4 principal masses at 16, 3-6 at 32, 4-8 at 48. A dark break where the cap turns down; the lip continues through corners and interior tiles never invent a new lip. No bevel around each stone. Walls are the cleanest kind: expect few isolated pixels (`NOISE_REVIEW`).
+
 ## Prompt template
 
 ```
