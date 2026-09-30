@@ -27,6 +27,8 @@ class KindSpecTest(unittest.TestCase):
                 self.assertEqual(pack.kind_spec("trim", px)["size"], "%dx%d" % (3 * px // 2, px // 2))
                 self.assertEqual(pack.kind_spec("trim", px)["axis"], "x")
                 self.assertEqual(pack.kind_spec("prop", px)["size"], "%dx%d" % (px, px))
+                self.assertEqual(pack.kind_spec("animation", px)["size"], frame)
+                self.assertEqual(pack.kind_spec("animation", px, (2, 2))["size"], "%dx%d" % (2 * px, 2 * px))
 
     def test_character_engine_tables_agree(self):
         for px, fmt in [(16, "rm2k"), (32, "vxace"), (48, "mv")]:
@@ -180,6 +182,25 @@ class PackStateTest(unittest.TestCase):
             self.assertEqual(code, 2, path)
         self.assertEqual(self.disk()["assets"], {})
 
+    def test_explicit_reservation_limit_override_allows_fourth_attempt(self):
+        for _ in range(3):
+            self.reserve()
+        code, _, err = h.run_cli("pack", "attempt", self.directory, "--name", "crate",
+                                "--kind", "prop", "--px", "16")
+        self.assertEqual(code, 2, err)
+        out = self.reserve("--max-calls", "4")
+        self.assertEqual(h.kv(out)["ATTEMPT"], "4")
+        self.assertEqual(len(self.entry(self.disk())["attempts"]), 4)
+
+    def test_reuse_lost_does_not_reuse_consumed_failed_call(self):
+        self.reserve()
+        data = self.disk()
+        self.entry(data)["attempts"][0].update(status="failed", runtime_calls=1)
+        pack.write_json(pack.pack_file(self.directory), data)
+        out = self.reserve("--reuse-lost")
+        self.assertEqual(h.kv(out)["ATTEMPT"], "2")
+        self.assertEqual(self.entry(self.disk())["attempts"][0]["status"], "failed")
+
     def test_attempt_records_defaults_and_overrides(self):
         self.reserve()
         attempt = self.entry(self.disk())["attempts"][0]
@@ -189,6 +210,12 @@ class PackStateTest(unittest.TestCase):
         self.assertEqual((attempt["size"], attempt["axis"], attempt["bg"]), ("32x48", "y", "alpha"))
         self.reserve("--block", "2x2")
         self.assertEqual(self.entry(self.disk())["attempts"][2]["size"], "32x32")
+
+    def test_animation_block_size_is_separate_from_default_frame(self):
+        self.cli("attempt", self.directory, "--name", "walk", "--kind", "animation",
+                 "--px", "16", "--block", "3x4")
+        attempt = self.disk()["assets"]["walk"]["sizes"]["16"]["attempts"][0]
+        self.assertEqual((attempt["size"], attempt["frame"]), ("48x64", "24x32"))
 
 
 if __name__ == "__main__":

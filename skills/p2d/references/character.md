@@ -36,7 +36,7 @@ Three columns per row: step A, standing, step B. Walking plays stand, A, stand, 
 
 ### 1. Master (front idle)
 
-Reserve `pack attempt DIR --name <char>-master --kind character --px P --prompt "..."`, then generate with `size <frame>`:
+Reserve `pack attempt DIR --name <char>-master --kind character --px P --master --prompt "..."`, then generate with `size <frame>`:
 
 ```
 An RPG Maker style JRPG overworld character sprite of <who: outfit, hair, colors, props>, facing the viewer (front view with a slight top-down tilt), standing still, full body, chibi proportions with <head/eyes/colors/shading from the budget row for P>. <16: "native 24x32 frame for 16px tiles, subject about 14-20 x 23-28px (wide headgear up to 22px), head including headgear about half the subject height, about 19-28 colors; two readable 1x2 dark/light irises with pale blue/white sclera and visible skin, short dark upper lids, nose/mouth implied by skin; 1px material-colored selective contour, skin 3 tones, connected hair/cloth highlights and narrow metal light bands, no random texture"; 32: "one expression cue and a deliberate stance"; 48: "materials told apart by highlight shape, one personal asymmetry">.
@@ -49,9 +49,12 @@ Flat solid #FF00FF magenta background everywhere, no shadow, no floor, no text.
 ```
 p2d.py pixelize RAW --kind prop --size <frame> --subject-height <H> --anchor bottom --margin 1 --protect-auto --pack DIR --out DIR/work/<char>/master@<P>.png --scale 8
 p2d.py face DIR/work/<char>/master@<P>.png --auto --scale 8
+p2d.py check DIR/work/<char>/master@<P>.png --kind frame --size <frame> --master --pack DIR
 ```
 
 Immediately after pixelizing every master, run `face`, open its `CROP`, and require every `EYE_n` and `RESULT` to PASS before approval. Use the coordinate and repair rules in step 4.
+
+`--master` applies the 16px width/height proportion gate only to front-idle masters; plain frame checks for side, back and walking poses do not impose that front-view budget. `pack accept` carries the reserved master flag into QC.
 
 `<H>` is the measured opaque height, not the frame height: 16 -> 26 (RM2K 23-28), 32 -> 30 (PIPOYA 27-32), 48 -> 44 (40-47). Never let the character fill the whole frame. `--protect-auto` keeps small eye cores and strong highlights through palette reduction (see `PROTECTED:`); add `--protect HEX` for any other identity colour. `pack accept` runs the face gate on the accepted file itself.
 

@@ -3,6 +3,8 @@ from __future__ import annotations
 import hashlib
 import json
 import os
+import re
+import shlex
 import shutil
 import tempfile
 import unittest
@@ -132,6 +134,21 @@ class AcceptGateTest(unittest.TestCase):
         record = pack.load_pack(moved)["assets"]["asset"]["sizes"]["16"]["accepted"]["face_report"]
         self.assertTrue(os.path.isfile(record["path"]))
 
+    def test_face_report_is_bound_to_checked_image_bytes(self):
+        self.reserve("character")
+        report = self.report()
+        a = h.load(self.final)
+        a[20, 10] = (101, 100, 120, 255)
+        h.save(a, self.final)
+        self.reject("face report image hash", "--face-report", report)
+
+    def test_face_prints_checked_image_sha256(self):
+        self.reserve("character")
+        report = self.report()
+        with open(report) as stream:
+            self.assertEqual(h.kv(stream.read()).get("IMAGE_SHA256"),
+                             pack._sha256(self.final))
+
     def test_wrong_file_failed_and_incomplete_reports_are_rejected(self):
         self.reserve("character")
         other = h.save(face(), os.path.join(self.directory, "work", "other.png"))
@@ -156,7 +173,7 @@ class AcceptGateTest(unittest.TestCase):
             self.assertEqual(report["sha256"], hashlib.sha256(stream.read()).hexdigest())
 
     def test_animation_auto_face_failure_needs_explicit_exemption(self):
-        self.reserve("animation")
+        self.reserve("animation", "--size", "16x16", "--frame", "16x16")
         self.reject("face check fails")
         code, out, err = self.accept("--no-face", "visored helmet")
         self.assertEqual(code, 0, out + err)
@@ -173,7 +190,7 @@ class AcceptGateTest(unittest.TestCase):
         h.save(a, self.final)
 
     def test_animation_atlas_checks_every_cell(self):
-        self.reserve("animation", "--size", "32x32")
+        self.reserve("animation", "--size", "32x32", "--frame", "16x16")
         self.atlas(touch=True)
         self.reject("r1c1", "--no-face", "test")
         self.atlas(touch=False)
@@ -181,10 +198,73 @@ class AcceptGateTest(unittest.TestCase):
         self.assertEqual(code, 0, out + err)
         self.assertEqual(self.entry()["accepted"]["qc"]["cells"], 4)
 
+    def test_rm2000_animation_uses_character_frame_not_tile_unit(self):
+        self.reserve("animation", "--size", "48x64")
+        a = np.zeros((64, 48, 4), dtype=np.uint8)
+        for r in range(2):
+            for c in range(2):
+                a[r * 32 + 3:r * 32 + 29, c * 24 + 3:c * 24 + 21] = (100, 80, 60, 255)
+        h.save(a, self.final)
+        code, out, err = self.accept("--no-face", "back view")
+        self.assertEqual(code, 0, out + err)
+        self.assertEqual(self.entry()["attempts"][0]["frame"], "24x32")
+        self.assertEqual(self.entry()["accepted"]["qc"]["cells"], 4)
+
+    def test_documented_body_and_fx_attempt_save_accept_flow(self):
+        doc = os.path.join(h.ROOT, "skills", "p2d", "references", "animation.md")
+        with open(doc) as stream:
+            commands = re.findall(r"`(pack attempt DIR[^`]+)`", stream.read())
+        guide = h.save(np.zeros((32, 32, 4), dtype=np.uint8),
+                       os.path.join(self.directory, "work", "guide.png"))
+        for kind in ("animation", "fx"):
+            with self.subTest(kind=kind):
+                command = next((text for text in commands if "--kind " + kind in text), None)
+                self.assertIsNotNone(command, "document a complete reservation command for " + kind)
+                values = {"DIR": self.directory, "<char>-<action>-<facing>": "body",
+                          "<char>-<effect>-<facing>": "effect", "P": "32",
+                          "AWxAH": "64x64", "WxH": "32x32", "GUIDE": guide}
+                argv = [values.get(token, token) for token in shlex.split(command)]
+                code, out, err = h.run_cli(*argv)
+                self.assertEqual(code, 0, out + err)
+                name = argv[argv.index("--name") + 1]
+                a = np.zeros((64, 64, 4), dtype=np.uint8)
+                for r in range(2):
+                    for c in range(2):
+                        a[r * 32 + 3:r * 32 + 29, c * 32 + 5:c * 32 + 27] = (100, 80, 60, 255)
+                raw = h.save(a, h.kv(out)["OUTPUT"])
+                final = h.save(a, os.path.join(self.directory, "assets", name + ".png"))
+                code, out, err = h.run_cli("pack", "accept", self.directory, "--name", name,
+                                          "--px", "32", "--raw", raw, "--file", final,
+                                          "--no-face", "faceless test sheet")
+                self.assertEqual(code, 0, out + err)
+
+    def test_wide_animation_frames_pass_and_interior_clipping_names_cell(self):
+        self.reserve("animation", "--size", "96x32", "--frame", "48x32")
+        a = np.zeros((32, 96, 4), dtype=np.uint8)
+        a[3:29, 4:44] = (100, 80, 60, 255)
+        a[3:29, 52:92] = (100, 80, 60, 255)
+        a[12:20, 48:52] = (100, 80, 60, 255)
+        h.save(a, self.final)
+        self.reject("r0c1: frame touches left edge", "--no-face", "back view")
+        a[12:20, 48:52] = 0
+        h.save(a, self.final)
+        code, out, err = self.accept("--no-face", "back view")
+        self.assertEqual(code, 0, out + err)
+        self.assertEqual(self.entry()["accepted"]["qc"]["cells"], 2)
+        attempt = self.entry()["attempts"][0]
+        self.assertEqual((attempt["size"], attempt["frame"]), ("96x32", "48x32"))
+
     def test_empty_or_conflicting_face_options_are_rejected(self):
         self.reserve("character")
         self.reject("--no-face", "--no-face", " ")
         self.reject("not allowed", "--no-face", "back", "--face-report", self.report())
+
+    def test_character_master_acceptance_rejects_thin_front(self):
+        self.reserve("character", "--master")
+        a = np.zeros((32, 24, 4), dtype=np.uint8)
+        a[5:31, 6:19] = (100, 80, 60, 255)
+        h.save(a, self.final)
+        self.reject("PROPORTION", "--no-face", "visored helmet")
 
 
 if __name__ == "__main__":

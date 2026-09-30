@@ -3,6 +3,8 @@ from __future__ import annotations
 
 import argparse
 import colorsys
+import hashlib
+import io
 import json
 import os
 from itertools import combinations
@@ -11,7 +13,7 @@ from typing import Callable, List, Sequence, Tuple, TypedDict
 import numpy as np
 from PIL import Image
 
-from .imageio import P2DError, emit, load_rgba, parse_hex, save_rgba, upscale
+from .imageio import P2DError, emit, parse_hex, save_rgba, upscale
 
 MIN_CONTRAST = 60
 MAX_SKIN_DISTANCE = 110
@@ -844,7 +846,12 @@ def _expression_pair(a: np.ndarray, detection: FaceDetection,
 
 
 def cmd_face(args: argparse.Namespace) -> int:
-    a = load_rgba(args.image).copy()
+    if not os.path.exists(args.image):
+        raise P2DError("file not found: %s" % args.image)
+    with open(args.image, "rb") as stream:
+        image_bytes = stream.read()
+    with Image.open(io.BytesIO(image_bytes)) as image:
+        a = np.array(image.convert("RGBA"), dtype=np.uint8)
     if args.key:
         key = np.array(parse_hex(args.key), dtype=np.uint8)
         a[(a[..., :3] == key).all(axis=-1), 3] = 0
@@ -1010,6 +1017,7 @@ def cmd_face(args: argparse.Namespace) -> int:
     out = args.out or os.path.splitext(args.image)[0] + "-face@%dx.png" % args.scale
     Image.fromarray(upscale(crop, args.scale), "RGBA").save(out)
     emit("CROP", out)
+    emit("IMAGE_SHA256", hashlib.sha256(image_bytes).hexdigest())
     emit("RESULT", "PASS" if not failures else "FAIL")
     return 0 if not failures else 1
 

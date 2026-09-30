@@ -17,19 +17,27 @@ def body(w, hgt):
 
 
 class ProportionTest(unittest.TestCase):
-    def run_check(self, img):
+    def run_check(self, img, *extra):
         p = h.save(img, os.path.join(h.tmp(), "f.png"))
-        return h.run_cli("check", p, "--kind", "frame", "--size", "24x32")
+        return h.run_cli("check", p, "--kind", "frame", "--size", "24x32", *extra)
 
     def test_thin_tall_16px_character_fails_chibi_proportion(self):
-        code, out, err = self.run_check(body(13, 26))
+        code, out, err = self.run_check(body(13, 26), "--master")
         self.assertEqual(code, 1, out + err)
         self.assertIn("PROPORTION", out)
         self.assertIn("chibi", out)
 
     def test_original_like_proportion_passes(self):
-        code, out, err = self.run_check(body(17, 25))
+        code, out, err = self.run_check(body(17, 25), "--master")
+        self.assertEqual(code, 0, out + err)
         self.assertNotIn("FAIL_REASON: PROPORTION", out)
+
+    def test_side_original_passes_plain_frame_check(self):
+        a = h.load(os.path.join(FIX, "face16", "char-01-left-c1.png"))
+        key = a[0, 0, :3].copy()
+        a[np.all(a[..., :3] == key, axis=2), 3] = 0
+        code, out, err = self.run_check(a, "--max-colors", "28")
+        self.assertEqual(code, 0, out + err)
 
     def test_real_rm2k_frame_passes(self):
         p = os.path.join(FIX, "rm2k-down.png")

@@ -32,7 +32,7 @@ For grounded actions, first build an anchor guide from the accepted native stand
 p2d.py anchor STANDING.png --rows R --cols C --cell 256x256 --margin 32 --out DIR/work/<char>/<action>-<facing>-guide.png
 ```
 
-Read the guide into context and reserve `pack attempt DIR --name <char>-<action>-<facing> --kind animation --px P --reference GUIDE`. Preserve its aspect ratio and geometry during generation. Use the same cell geometry and integer scale for compatible actions at the same px. A different target px needs a separately redrawn and accepted standing reference first, not an enlarged smaller sprite.
+Read the guide into context and reserve `pack attempt DIR --name <char>-<action>-<facing> --kind animation --px P --size AWxAH --frame WxH --reference GUIDE`. `WxH` is one delivery frame; the full atlas is `AW = C * W`, `AH = R * H` (2x2 at px32: `--size 64x64 --frame 32x32`; px16: `--size 48x64 --frame 24x32`). Preserve its aspect ratio and geometry during generation. Use the same cell geometry and integer scale for compatible actions at the same px. A different target px needs a separately redrawn and accepted standing reference first, not an enlarged smaller sprite.
 
 ```
 Image 1 is the approved character. Draw a <N>-frame <action> animation of exactly this character facing <facing>, same design, colors and proportions.
@@ -58,7 +58,7 @@ If equal cuts intersect intact figures separated by empty background bands, insp
 
 ## Effects
 
-Effects are their own sheets layered by the game: reserve `--kind fx`, same grid rules, prompt `only the <effect>, no character`, then `frames ... --anchor center --loose`.
+Effects are their own sheets layered by the game: reserve `pack attempt DIR --name <char>-<effect>-<facing> --kind fx --px P --size AWxAH --frame WxH`, with the same atlas calculation and grid rules, prompt `only the <effect>, no character`, then `frames ... --anchor center --loose`.
 
 ## Deliverables
 
@@ -67,4 +67,4 @@ p2d.py gif DIR/work/<char>/<action>@P/r0c0.png DIR/work/<char>/<action>@P/r0c1.p
 p2d.py atlas DIR/work/<char>/<action>@P/r*.png --cols C --out DIR/assets/<char>/<char>-<action>@P.png
 ```
 
-Read the GIF's frames (or the atlas at `@8x` via `preview`) before accepting: the body must not grow or shrink, feet must not slide on grounded actions. `pack accept` checks every PxP cell of an animation atlas as a frame and rejects the atlas if any cell fails (e.g. `r1c0: frame touches left edge`): pull the pose inside the cell or regenerate; never crop the weapon to pass.
+Read the GIF's frames (or the atlas at `@8x` via `preview`) before accepting: the body must not grow or shrink, feet must not slide on grounded actions. `pack accept` checks every recorded `WxH` cell of an animation atlas as a frame and rejects the atlas if any cell fails (e.g. `r1c0: frame touches left edge`): pull the pose inside the cell or regenerate; never crop the weapon to pass.
