@@ -198,6 +198,21 @@ class CliTest(unittest.TestCase):
         self.assertEqual(h.kv(out)["CANDIDATES_KEPT"], "3")
         self.assertTrue(all(os.path.exists(o) for o in outputs))
 
+    def test_character_accept_requires_engine_frame_or_sheet_size(self):
+        d = h.tmp()
+        pack = os.path.join(d, "p")
+        h.run_cli("pack", "init", pack, "--name", "p", "--px", "16")
+        code, out, err = h.run_cli("pack", "attempt", pack, "--name", "knight-master", "--kind", "character", "--px", "16")
+        self.assertEqual(code, 0, err)
+        raw = h.save(h.native_art(4, 4, h.DUNGEON, seed=1), h.kv(out)["OUTPUT"])
+        square = h.save(h.native_art(16, 16, h.DUNGEON, seed=1), os.path.join(d, "sq.png"))
+        code, _, err = h.run_cli("pack", "accept", pack, "--name", "knight-master", "--px", "16", "--raw", raw, "--file", square)
+        self.assertEqual(code, 2)
+        self.assertIn("24x32", err)
+        frame = h.save(h.native_art(24, 32, h.DUNGEON, seed=1), os.path.join(d, "fr.png"))
+        code, _, err = h.run_cli("pack", "accept", pack, "--name", "knight-master", "--px", "16", "--raw", raw, "--file", frame)
+        self.assertEqual(code, 0, err)
+
     def test_inspect_reports_pitch_and_px(self):
         d = h.tmp()
         native = h.native_art(32, 32, h.DUNGEON, seed=1)

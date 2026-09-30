@@ -10,6 +10,8 @@ People, monsters and NPCs that walk on a 3/4 top-down map, delivered as RPG Make
 | 32 | 32x32 | `$name.png` 96x128 (or 8-character 384x256) | Down, Left, Right, Up | RPG Maker VX / VX Ace |
 | 48 | 48x48 | `$name.png` 144x192 (or 576x384) | Down, Left, Right, Up | RPG Maker MV / MZ |
 
+The px is the tile unit, not the frame: a 16px character is a 24x32 frame, never 16x16; `pack accept` rejects any other character size. Pixelize every master and frame with `--size <frame>` from this table.
+
 ## Drawing budget per px (measured on original sprites)
 
 The frame is not the drawing: a character rarely fills its cell, and a small size is a redesign, not a shrunk illustration. Budgets from original PNGs (Alex 16, PIPOYA 32, Clockwork Raven / Character Base 48):

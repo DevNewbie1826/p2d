@@ -181,6 +181,13 @@ def candidates(entry: Dict[str, Any]) -> List[str]:
     return found
 
 
+CHARACTER_SIZES = {
+    16: ("24x32", "72x128", "288x256"),
+    32: ("32x32", "96x128", "384x256"),
+    48: ("48x48", "144x192", "576x384"),
+}
+
+
 def _accept(args: argparse.Namespace, data: Dict[str, Any]) -> int:
     px = validate_px([args.px])[0]
     entry = _asset_size_entry(data, args.name, px)
@@ -190,6 +197,12 @@ def _accept(args: argparse.Namespace, data: Dict[str, Any]) -> int:
         raise P2DError("%s is not a candidate of a reserved attempt for %s@%d" % (args.raw, args.name, px))
     if not os.path.exists(args.file):
         raise P2DError("processed file not found: %s" % args.file)
+    if (data.get("assets") or {}).get(args.name, {}).get("kind") == "character":
+        allowed = CHARACTER_SIZES[px]
+        rgba = load_rgba(args.file)
+        size = "%dx%d" % (rgba.shape[1], rgba.shape[0])
+        if size not in allowed:
+            raise P2DError("character at %dpx must be %s (frame, block or sheet); got %s" % (px, " or ".join(allowed), size))
     entry["accepted"] = {"file": args.file, "raw": args.raw}
     save_pack(args.dir, data)
     emit("ACCEPTED", "%s@%d -> %s" % (args.name, px, args.file))
