@@ -1,6 +1,6 @@
 # Animations and effects
 
-Action loops for a character that already has an approved master or walking sheet (if none exists yet, make the master as in the character reference and get the user's approval before generating any action or FX): idle, attack, cast, hurt, jump, death, plus separate effect sheets (slash arcs, sparks, spells, projectiles).
+Action loops for a character that already has an approved master or walking sheet (if none exists yet at the requested px, make the master for that px as in the character reference - redrawn from the approved master of another px when there is one - and get the user's approval of that px's master with `ask_user_question` before generating any action or FX; an approval at another px does not count): idle, attack, cast, hurt, jump, death, plus separate effect sheets (slash arcs, sparks, spells, projectiles).
 
 ## Grid per action
 
