@@ -20,7 +20,7 @@ Reserve `pack attempt DIR --name <char>-master --kind character --px P --prompt 
 
 ```
 An RPG Maker style JRPG overworld character sprite of <who: outfit, hair, colors, props>, facing the viewer (front view with a slight top-down tilt), standing still, full body, chibi proportions with the head about one third of the height.
-Exactly one character, centred, feet on the bottom edge, whole body inside the image.
+Exactly one character, centred, whole body inside the image with a clear magenta margin on every side.
 Designed as a <frame W>x<frame H> pixel grid: each pixel a large crisp square block. Dark outline, light from the top-left.
 Flat solid #FF00FF magenta background everywhere, no shadow, no floor, no text.
 <pack line from SKILL.md>

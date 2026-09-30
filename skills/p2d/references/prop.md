@@ -11,13 +11,13 @@ Single objects with a transparent background: crates, barrels, pots, chests, tab
 | wide object (table, bed, cart) | 2x1 or 2x2 tiles | `bottom` |
 | item or UI icon (potion, key, sword) | 1x1 tile | `center`, `--margin 1` |
 
-Floor objects touch the bottom row; items float centred. Use `--margin N` to keep empty logical pixels around the subject when it must not fill the canvas.
+Floor objects end up touching the bottom row (pixelize `--anchor bottom`); items float centred. In the generated image the object always keeps a magenta margin on all sides so `raw-check` can see the key border. Use `--margin N` to keep empty logical pixels around the subject when it must not fill the canvas.
 
 ## Prompt template
 
 ```
 A single <object> as a game prop for a 2D RPG Maker-style map, 3/4 top-down view showing the top and the front, <material, colors, details>.
-Exactly one object, centred, fully inside the image, standing on the bottom edge (items: floating in the centre).
+Exactly one object, centred, fully inside the image with a clear magenta margin on every side (pixelize moves floor objects down to the bottom row).
 Designed as a <W>x<H> pixel grid: each pixel a large crisp square block. Dark selective outline, light from the top-left.
 Flat solid #FF00FF magenta background everywhere around the object, no shadow on the background, no floor, no text, no other objects.
 <pack line from SKILL.md>
