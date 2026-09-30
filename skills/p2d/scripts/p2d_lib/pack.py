@@ -228,9 +228,16 @@ def attempt_prefix(directory: str, name: str, px: int, number: int) -> str:
     return os.path.abspath(os.path.join(directory, "raw", "%s@%d_a%d" % (name, px, number)))
 
 
+def require_consent(args: argparse.Namespace) -> None:
+    if args.max_calls > MAX_ATTEMPTS and not (getattr(args, "user_consent", None) or "").strip():
+        raise P2DError("--max-calls above %d needs --user-consent \"<the user's words>\": ask the user with "
+                       "ask_user_question first; never raise the cap on your own" % MAX_ATTEMPTS)
+
+
 def _attempt(args: argparse.Namespace, data: Dict[str, Any]) -> int:
     if args.max_calls <= 0:
         raise P2DError("--max-calls must be positive")
+    require_consent(args)
     px = validate_px([args.px])[0]
     reference = os.path.abspath(args.reference) if args.reference else None
     if reference:
@@ -275,6 +282,8 @@ def _attempt(args: argparse.Namespace, data: Dict[str, Any]) -> int:
         record["frame"] = frame
     if args.master:
         record["master"] = True
+    if (getattr(args, "user_consent", None) or "").strip():
+        record["user_consent"] = args.user_consent.strip()
     if lost is not None:
         lost.update(record)
     else:
@@ -538,7 +547,8 @@ def configure(name: str, parser: argparse.ArgumentParser) -> Callable[[argparse.
     att.add_argument("--bg", choices=["key", "alpha", "none"], help="background mode (default from kind)")
     att.add_argument("--reuse-lost", action="store_true", help="reuse the newest reserved attempt without a raw")
     att.add_argument("--max-calls", type=int, default=MAX_ATTEMPTS,
-                     help="reservation cap per asset/px (default 3); raising it requires explicit user consent")
+                     help="reservation cap per asset/px (default 3); above 3 needs --user-consent")
+    att.add_argument("--user-consent", help="the user's own words allowing more attempts (ask first)")
     acc = sub.add_parser("accept", help="mark the chosen candidate and its processed file")
     acc.add_argument("dir")
     acc.add_argument("--name", required=True)
