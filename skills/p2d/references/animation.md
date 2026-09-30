@@ -14,6 +14,8 @@ One action and one facing per raw generation. Multi-row grids only; a raw single
 | 9 | 3x3 |
 | 12 | 3x4 |
 
+Default when the user gives no frame count: 4 frames in a 2x2 grid for idle, attack, cast and hurt (the VX Ace / MV convention); use more frames only when the user asks for them or the motion clearly needs them (say why in the report). Every delivered sheet also gets its `frames` report (frames.json with RESULT PASS) and a GIF preview; a sheet without both is not delivered.
+
 Frame size = the character frame for the px (24x32, 32x32, 48x48). A weapon or pose that needs room gets a wider frame (e.g. 48x32 at px 16) while the body keeps its walking height.
 
 Compact-pose wording below is a containment aid, not an extra artistic requirement. Judge the requested action, identity, anatomical scale and actual clipping. A readable thrust that fits the requested frame and passes QC is not a failure just because the default prompt suggested bent elbows. Preserve any motion the user specifically requested.
