@@ -14,6 +14,9 @@ CUTOUT = ("prop", "frame")
 KINDS = SURFACE + CUTOUT
 
 
+MIN_CHIBI_RATIO = 0.62
+
+
 def default_axis(kind: str, width: int, height: int) -> str:
     if kind == "tile":
         return "xy"
@@ -125,6 +128,60 @@ def _outline_gaps(rgba: Arr, palette: Sequence[Tuple[int, int, int]]) -> Tuple[i
     return int(gaps.sum()), locations
 
 
+# (singleton % warning above, mean cluster warning below) per kind and tile size,
+# measured on original human-made 16/32/48 packs; frames use character bands.
+NOISE_PROFILE = {
+    ("tile", 16): (20.0, 3.0), ("tile", 32): (12.0, 5.0), ("tile", 48): (10.0, 6.0),
+    ("trim", 16): (20.0, 3.0), ("trim", 32): (12.0, 5.0), ("trim", 48): (10.0, 6.0),
+    ("wall", 16): (15.0, 3.0), ("wall", 32): (5.0, 10.0), ("wall", 48): (5.0, 10.0),
+    ("prop", 16): (20.0, 3.0), ("prop", 32): (8.0, 6.0), ("prop", 48): (15.0, 3.0),
+    ("frame", 16): (28.0, 2.0), ("frame", 32): (30.0, 2.25), ("frame", 48): (25.0, 3.0),
+}
+
+
+def noise_limits(kind: str, width: int, height: int) -> Optional[Tuple[float, float]]:
+    unit = min(width, height)
+    if kind == "frame" and (width, height) == (24, 32):
+        unit = 16
+    for px in (48, 32, 16):
+        if unit >= px:
+            return NOISE_PROFILE[(kind, px)]
+    return None
+
+
+def cluster_stats(rgba: Arr) -> Tuple[float, float]:
+    """Percent of opaque pixels with no same-color 4-neighbor, and mean same-color 4-connected cluster size."""
+    opaque = rgba[..., 3] > 0
+    total = int(opaque.sum())
+    if total == 0:
+        return 0.0, 0.0
+    rgb = rgba[..., :3].astype(np.int32)
+    code = (rgb[..., 0] << 16) | (rgb[..., 1] << 8) | rgb[..., 2]
+    code = np.where(opaque, code, -1)
+    padded = np.pad(code, 1, constant_values=-2)
+    same = np.zeros(code.shape, dtype=bool)
+    for dy, dx in ((0, 1), (2, 1), (1, 0), (1, 2)):
+        same |= padded[dy : dy + code.shape[0], dx : dx + code.shape[1]] == code
+    singletons = int((opaque & ~same).sum())
+    seen = np.zeros(code.shape, dtype=bool)
+    clusters = 0
+    height, width = code.shape
+    for y0, x0 in np.argwhere(opaque):
+        if seen[y0, x0]:
+            continue
+        clusters += 1
+        value = code[y0, x0]
+        seen[y0, x0] = True
+        pending = [(int(y0), int(x0))]
+        while pending:
+            y, x = pending.pop()
+            for ny, nx in ((y - 1, x), (y + 1, x), (y, x - 1), (y, x + 1)):
+                if 0 <= ny < height and 0 <= nx < width and not seen[ny, nx] and code[ny, nx] == value:
+                    seen[ny, nx] = True
+                    pending.append((ny, nx))
+    return singletons / total * 100.0, total / clusters
+
+
 def cmd_check(args: argparse.Namespace) -> int:
     if args.outline_colors is not None and args.kind not in CUTOUT:
         raise P2DError("--outline-colors is only supported for prop/frame")
@@ -146,6 +203,13 @@ def cmd_check(args: argparse.Namespace) -> int:
     edges = _edge_touch(rgba)
     ratios = [(name, seam.seam_ratio(rgba, name)) for name in _checked_axes(axis)]
     outside = _outside_palette(rgba, palette) if palette else 0
+    noise_rgba = rgba
+    if args.kind == "frame" and args.key:
+        # Original keyed sheets are opaque; exclude their declared key from
+        # character noise statistics without hiding alpha/residue QC failures.
+        noise_rgba = rgba.copy()
+        noise_rgba[np.all(rgba[..., :3] == np.asarray(key), axis=2), 3] = 0
+    singleton_percent, mean_cluster = cluster_stats(noise_rgba)
 
     reasons: List[str] = []
     if (width, height) != (expected_w, expected_h):
@@ -161,8 +225,27 @@ def cmd_check(args: argparse.Namespace) -> int:
     if args.kind in SURFACE and transparent:
         reasons.append("transparent pixels in a %s" % args.kind)
     for name, ratio in ratios:
+        if args.kind in SURFACE and colors > 1:
+            strips = rgba.transpose(1, 0, 2) if name == "x" else rgba
+            if len(strips) > 2 and np.array_equal(strips[0], strips[-1]):
+                # A zero wrap difference is suspicious only if an inner transition
+                # exists: flat fields and stripes parallel to this axis are valid.
+                inner_diff = (np.any(strips[0] != strips[1]) or np.any(strips[-1] != strips[-2]))
+                if inner_diff:
+                    # Identical opposite edges may be a copied edge or a natural period;
+                    # it cannot be told apart from pixels alone, so ask for review.
+                    emit("SEAM_%s_EDGE_REVIEW" % name.upper(), "opposite edges identical: check the 4x4 repeat for a copied edge")
         if ratio > args.seam_max:
             reasons.append("SEAM_%s %.4f too high" % (name.upper(), ratio))
+    if args.kind == "frame" and (width, height) == (24, 32):
+        ys, xs = np.nonzero(rgba[..., 3] > 0)
+        if len(xs):
+            ratio_wh = (xs.max() - xs.min() + 1) / float(ys.max() - ys.min() + 1)
+            emit("PROPORTION", "%.2f" % ratio_wh)
+            if ratio_wh < MIN_CHIBI_RATIO:
+                reasons.append("PROPORTION %.2f below %.2f: too thin for a 16px chibi character (RM2000 originals 0.67-0.83 width/height)" % (ratio_wh, MIN_CHIBI_RATIO))
+    if args.max_singletons is not None and singleton_percent > args.max_singletons:
+        reasons.append("SINGLETON_PERCENT %.1f over %.1f (speckle noise)" % (singleton_percent, args.max_singletons))
     if args.kind in CUTOUT and not opaque.any():
         reasons.append("no opaque pixel")
     if args.kind in CUTOUT and transparent == 0 and not args.allow_opaque:
@@ -180,6 +263,9 @@ def cmd_check(args: argparse.Namespace) -> int:
 
     emit("SIZE", "%dx%d" % (width, height))
     emit("COLORS", colors)
+    budget = {16: 3, 32: 4, 48: 4}.get(min(width, height))
+    if args.kind == "tile" and budget is not None and args.max_colors is not None and cap < budget:
+        emit("COLORS_BELOW_BUDGET", "%d below tile %dpx minimum %d" % (cap, min(width, height), budget))
     if palette:
         emit("OUT_OF_PALETTE", outside)
     emit("ALPHA_BINARY", "yes" if binary else "no")
@@ -188,6 +274,22 @@ def cmd_check(args: argparse.Namespace) -> int:
     for name, ratio in ratios:
         emit("SEAM_%s" % name.upper(), "%.4f" % ratio)
     emit("EDGE_TOUCH", edges)
+    emit("SINGLETON_PERCENT", "%.1f" % singleton_percent)
+    emit("MEAN_CLUSTER", "%.2f" % mean_cluster)
+    limits = noise_limits(args.kind, width, height)
+    if limits is not None:
+        flagged = singleton_percent > limits[0] or mean_cluster < limits[1]
+        if args.kind == "frame" and (width, height) == (24, 32) and 31.0 <= singleton_percent <= 52.0:
+            flagged = False
+        emit("NOISE_REVIEW", "yes (singleton > %.0f%% or cluster < %.2f)" % limits if flagged else "no")
+        if flagged and args.kind in SURFACE and not args.allow_noise:
+            reasons.append(
+                "NOISE: scattered isolated pixels for a %s of this px (singleton %.1f%%, cluster %.2f)"
+                % (args.kind, singleton_percent, mean_cluster)
+            )
+            cleaned, _, _ = pixelize.despeckle_auto(rgba)
+            target, _ = cluster_stats(cleaned)
+            emit("NOISE_HINT", "--despeckle auto would reach %.1f%% singletons (3%% change cap)" % target)
     return emit_result(not reasons, reasons)
 
 
@@ -204,6 +306,17 @@ def configure(name: str, parser: argparse.ArgumentParser) -> Callable[[argparse.
         help="seam axes (default: tile xy, wall x, trim x if width >= height else y, prop/frame none)",
     )
     parser.add_argument("--seam-max", type=float, default=1.6, help="fail when a checked seam ratio is above this")
+    parser.add_argument(
+        "--max-singletons",
+        type=float,
+        default=None,
+        help="fail when more than this percent of opaque pixels have no same-color 4-neighbor (speckle noise)",
+    )
+    parser.add_argument(
+        "--allow-noise",
+        action="store_true",
+        help="tile/wall/trim: do not fail on NOISE_REVIEW (only for a deliberately dithered or dense style the user asked for)",
+    )
     parser.add_argument("--key", default=None, help="key color (default: pack key or #ff00ff)")
     parser.add_argument("--allow-opaque", action="store_true", help="allow a prop or frame with no transparent pixels")
     parser.add_argument(

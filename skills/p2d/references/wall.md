@@ -9,6 +9,10 @@ Wall faces in the RPG Maker 3/4 view: stone or brick walls, cliff faces, wooden 
 - Repeat axis: `x` (sideways). Use `xy` only when the user wants a face that also stacks upward.
 - Free-standing pillars, columns, statues or a single wall end are props (they have transparent sides), not walls.
 
+## Front-facing 3/4 construction (from original JRPG tilesets)
+
+The top is a plane (a walkable cap band in its own material), not a bright outline. The front face is darker, with vertically elongated masses and one shared crack network: 2-4 principal masses at 16, 3-6 at 32, 4-8 at 48. A dark break where the cap turns down; the lip continues through corners and interior tiles never invent a new lip. No bevel around each stone. Masonry courses (stone, brick): EVERY course shows vertical joints, and joints of neighbouring courses are offset by half a stone (running bond), so a 1-tile-wide piece still has one joint per course (at the edge in one course, mid-width in the next); a course without joints reads as a slab. At px 16 pixelize often drops the mid-width joint to a single dot: every joint must be a 1 px dark column spanning the full course height, so check each course in the repeat preview and repaint missing joints on the native file (or reject). Keep 16 px stone faces calm (2-3 values in broad patches), not mottled. Vary the highlight shape between stones so the repeat is not one stamped block. Say it in the prompt: `running bond: joints staggered by half a stone between courses`. Walls are the cleanest kind: expect few isolated pixels (`NOISE_REVIEW`).
+
 ## Prompt template
 
 ```
@@ -29,6 +33,6 @@ p2d.py check DIR/assets/<name>/<name>@<P>.png --kind wall --size WxH --pack DIR
 p2d.py preview DIR/assets/<name>/<name>@<P>.png --repeat 3 --out DIR/previews/<name>@<P>-repeat.png
 ```
 
-`check --kind wall` measures the x seam by default; pass `--axis xy` for stacking walls. Seam repair is the offset-and-repaint method with `--axis x` (or `xy`): `p2d.py offset RAW --axis x --out OFFSET --mask MASK`, repaint the masked band with the image tool (reserve an attempt first), `p2d.py offset EDITED --axis x --inverse --out FIXED`.
+`check --kind wall` measures the x seam by default; pass `--axis xy` for stacking walls. Seam repair is the offset-and-repaint method with `--axis x` (or `xy`): `p2d.py offset RAW --axis x --out OFFSET --mask MASK`, repaint the masked band with `gen_image.mjs --ref OFFSET --mask MASK` (reserve an attempt first), `p2d.py offset EDITED --axis x --inverse --out FIXED`.
 
 Record `--axis x` (or `xy`) on `pack attempt`.

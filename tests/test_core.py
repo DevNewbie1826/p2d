@@ -190,13 +190,35 @@ class CliTest(unittest.TestCase):
         self.assertEqual(code, 2)
         self.assertIn("attempt limit reached (3)", err)
         stray = h.save(h.native_art(4, 4, h.DUNGEON, seed=9), os.path.join(d, "stray.png"))
-        final = h.save(h.native_art(16, 16, h.DUNGEON, seed=1), os.path.join(d, "crate.png"))
+        rgba = h.native_art(16, 16, h.DUNGEON, seed=1)
+        rgba[[0, -1], :, 3] = 0
+        rgba[:, [0, -1], 3] = 0
+        final = h.save(rgba, os.path.join(d, "crate.png"))
         code, _, err = h.run_cli("pack", "accept", pack, "--name", "crate", "--px", "16", "--raw", stray, "--file", final)
         self.assertEqual(code, 2)
         code, out, err = h.run_cli("pack", "accept", pack, "--name", "crate", "--px", "16", "--raw", outputs[1], "--file", final)
         self.assertEqual(code, 0, err)
         self.assertEqual(h.kv(out)["CANDIDATES_KEPT"], "3")
         self.assertTrue(all(os.path.exists(o) for o in outputs))
+
+    def test_character_accept_requires_engine_frame_or_sheet_size(self):
+        d = h.tmp()
+        pack = os.path.join(d, "p")
+        h.run_cli("pack", "init", pack, "--name", "p", "--px", "16")
+        code, out, err = h.run_cli("pack", "attempt", pack, "--name", "knight-master", "--kind", "character", "--px", "16")
+        self.assertEqual(code, 0, err)
+        raw = h.save(h.native_art(4, 4, h.DUNGEON, seed=1), h.kv(out)["OUTPUT"])
+        square = h.save(h.native_art(16, 16, h.DUNGEON, seed=1), os.path.join(d, "sq.png"))
+        code, _, err = h.run_cli("pack", "accept", pack, "--name", "knight-master", "--px", "16", "--raw", raw, "--file", square)
+        self.assertEqual(code, 2)
+        self.assertIn("24x32", err)
+        rgba = h.native_art(24, 32, h.DUNGEON, seed=1)
+        rgba[[0, -1], :, 3] = 0
+        rgba[:, [0, -1], 3] = 0
+        frame = h.save(rgba, os.path.join(d, "fr.png"))
+        code, _, err = h.run_cli("pack", "accept", pack, "--name", "knight-master", "--px", "16",
+                                "--raw", raw, "--file", frame, "--no-face", "back-view size fixture")
+        self.assertEqual(code, 0, err)
 
     def test_inspect_reports_pitch_and_px(self):
         d = h.tmp()
@@ -220,6 +242,18 @@ class CliTest(unittest.TestCase):
         code, out, _ = h.run_cli("raw-check", bad, "--bg", "key")
         self.assertEqual(code, 1)
         self.assertEqual(h.kv(out)["RESULT"], "FAIL")
+
+    def test_raw_check_opaque_surface_rejects_transparency(self):
+        d = h.tmp()
+        surface = np.full((64, 64, 4), (40, 90, 200, 255), dtype=np.uint8)
+        solid = h.save(surface, os.path.join(d, "solid.png"))
+        code, out, _ = h.run_cli("raw-check", solid, "--bg", "none")
+        self.assertEqual(code, 0, out)
+        surface[8:40, 8:40, 3] = 0
+        holed = h.save(surface, os.path.join(d, "holed.png"))
+        code, out, _ = h.run_cli("raw-check", holed, "--bg", "none")
+        self.assertEqual(code, 1, out)
+        self.assertGreater(float(h.kv(out)["TRANSPARENT_PERCENT"]), 0)
 
 
 if __name__ == "__main__":

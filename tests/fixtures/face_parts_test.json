@@ -1,0 +1,34 @@
+{
+  "px": 16,
+  "frame": [24, 32],
+  "sources": [{"id": "test", "path": "rm2k-blue-down.png", "note": "Small test library based on the measured RM2000 eye construction."}],
+  "facings": {
+    "front": {
+      "anchor": "cx = centre between iris columns, ey = top iris row",
+      "eyes": {
+        "normal": {"left": {"at": [-2.5, -1], "grid": [".l", "sd", "wi"]}, "right": "mirror", "source": {"id": "test", "file": "rm2k-blue-down.png", "box": [9, 14, 6, 3]}},
+        "sad": {"left": {"at": [-2.5, -1], "grid": ["sl", "ld", "wi"]}, "right": "mirror", "source": {"derived_from": "normal", "how": "Lower the outer lid while leaving both irises open."}},
+        "highlight": {"left": {"at": [-2.5, -1], "grid": ["hl", "sd", "wi"]}, "right": "mirror", "source": {"derived_from": "normal", "how": "Add a highlight on the skin-side corner."}},
+        "closed": {"left": {"at": [-2.5, -1], "grid": ["ss", "ll", "ss"]}, "right": "mirror", "source": {"derived_from": "normal", "how": "Replace iris and sclera with a closed lid."}},
+        "wink-l": {"left": {"at": [-2.5, -1], "grid": ["ss", "ll", "ss"]}, "right": {"at": [1.5, -1], "grid": ["l.", "ds", "iw"]}, "source": {"derived_from": "normal", "how": "Close the left eye."}},
+        "patch-l": {"left": {"at": [-2.5, -1], "grid": ["pp", "pp", "pp"]}, "right": {"at": [1.5, -1], "grid": ["l.", "ds", "iw"]}, "source": {"derived_from": "normal", "how": "Cover the left eye with a patch."}},
+        "one-eyed-l": {"left": {"at": [-2.5, -1], "grid": ["ss", "lc", "ss"]}, "right": {"at": [1.5, -1], "grid": ["l.", "ds", "iw"]}, "source": {"derived_from": "normal", "how": "Close and scar the left eye."}}
+      },
+      "brows": {
+        "angry": {"left": {"at": [-2.5, -2], "grid": ["lS"]}, "right": "mirror", "source": {"derived_from": "normal", "how": "Add a sloped brow and shadow."}}
+      },
+      "mouth": {
+        "none": {"at": [-1.5, 3], "grid": ["..."], "source": {"derived_from": "normal", "how": "Erase the old mouth and add no paint."}},
+        "open": {"at": [-1.5, 3], "grid": ["mtm"], "source": {"derived_from": "normal", "how": "Add an open mouth."}}
+      }
+    },
+    "left": {
+      "anchor": "cx = iris column, ey = top iris row",
+      "eyes": {
+        "normal": {"eye": {"at": [-1, -1], "grid": [".l", "sd", "wi"]}, "source": {"derived_from": "normal", "how": "Keep the visible left eye."}},
+        "closed": {"eye": {"at": [-1, -1], "grid": ["ss", "ll", "ss"]}, "source": {"derived_from": "normal", "how": "Close the visible eye."}}
+      }
+    },
+    "right": "mirror-of-left"
+  }
+}

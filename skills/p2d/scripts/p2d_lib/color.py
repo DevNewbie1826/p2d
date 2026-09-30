@@ -62,11 +62,16 @@ def _median_cut(colors: Arr, k: int) -> Arr:
     return np.array([raw[i * 3 : i * 3 + 3] for i in used], dtype=np.uint8)
 
 
-def _merge_least_used(colors: Arr, indices: Arr, palette: Arr, cap: int) -> Tuple[Arr, Arr]:
+def _merge_least_used(colors: Arr, indices: Arr, palette: Arr, cap: int,
+                     protect: Sequence[RGB] = ()) -> Tuple[Arr, Arr]:
     counts = np.bincount(indices, minlength=len(palette))
     alive = [i for i in range(len(palette)) if counts[i] > 0]
+    protected = set(protect)
+    locked = {i for i in alive if tuple(palette[i]) in protected}
+    if len(locked) > cap:
+        raise P2DError("protected colours exceed --max-colors")
     while len(alive) > cap:
-        victim = min(alive, key=lambda i: counts[i])
+        victim = min((i for i in alive if i not in locked), key=lambda i: counts[i])
         rest = [i for i in alive if i != victim]
         target = rest[int(redmean_distance(palette[[victim]], palette[rest]).argmin())]
         indices[indices == victim] = target
@@ -78,21 +83,75 @@ def _merge_least_used(colors: Arr, indices: Arr, palette: Arr, cap: int) -> Tupl
     return palette[alive], new_indices
 
 
-def reduce_colors(colors: Arr, max_colors: int, palette: Optional[Sequence[RGB]] = None) -> Arr:
+def reduce_colors(colors: Arr, max_colors: int, palette: Optional[Sequence[RGB]] = None,
+                  protect: Sequence[RGB] = ()) -> Arr:
     if max_colors < 1:
         raise P2DError("max colors must be >= 1")
     colors = np.asarray(colors, dtype=np.uint8).reshape(-1, 3)
     if len(colors) == 0:
         return colors
+    protected = set(protect)
+    if len(protected) > max_colors:
+        raise P2DError("protected colours exceed --max-colors")
+    locked = np.array(sorted(protected), dtype=np.uint8).reshape(-1, 3)
+    protected_mask = np.zeros(len(colors), dtype=bool)
+    for rgb in locked:
+        protected_mask |= np.all(colors == rgb, axis=1)
     if palette:
         pal = np.array(palette, dtype=np.uint8)
-        idx = nearest_index(colors, pal)
     else:
         unique = np.unique(colors, axis=0)
-        pal = unique if len(unique) <= max_colors else _cluster(colors)
-        idx = nearest_index(colors, pal)
-    pal, idx = _merge_least_used(colors, idx, pal, max_colors)
+        unprotected = colors[~protected_mask]
+        pal = unique if len(unique) <= max_colors else (
+            _cluster(unprotected) if len(unprotected) else locked)
+    if len(locked):
+        pal = np.unique(np.concatenate([pal, locked]), axis=0)
+    idx = nearest_index(colors, pal)
+    pal, idx = _merge_least_used(colors, idx, pal, max_colors, protect)
     return pal[idx]
+
+
+def protected_colors_auto(rgba: Arr) -> List[RGB]:
+    """Protect enclosed, four-connected color clusters of at most six pixels."""
+    height, width = rgba.shape[:2]
+    opaque = rgba[..., 3] > 0
+    ys = np.flatnonzero(opaque.any(axis=1))
+    if not len(ys):
+        return []
+    midpoint = (int(ys[0]) + int(ys[-1]) + 1) / 2
+    luma = rgba[..., :3] @ np.array([0.299, 0.587, 0.114])
+    visited = np.zeros((height, width), dtype=bool)
+    protected = set()
+    for y, x in np.argwhere(opaque):
+        if visited[y, x]:
+            continue
+        rgb = rgba[y, x, :3]
+        stack = [(int(y), int(x))]
+        visited[y, x] = True
+        cluster = []
+        neighbours = set()
+        enclosed = True
+        while stack:
+            cy, cx = stack.pop()
+            cluster.append((cy, cx))
+            for ny, nx in ((cy - 1, cx), (cy + 1, cx), (cy, cx - 1), (cy, cx + 1)):
+                if not (0 <= ny < height and 0 <= nx < width) or not opaque[ny, nx]:
+                    enclosed = False
+                elif np.array_equal(rgba[ny, nx, :3], rgb):
+                    if not visited[ny, nx]:
+                        visited[ny, nx] = True
+                        stack.append((ny, nx))
+                else:
+                    neighbours.add((ny, nx))
+        if not enclosed or len(cluster) > 6 or not neighbours:
+            continue
+        lum = float(luma[y, x])
+        boundary = np.array([luma[ny, nx] for ny, nx in neighbours])
+        eye = lum < 128 and all(cy < midpoint for cy, _ in cluster) and np.all(boundary > lum)
+        contrast = np.all(np.abs(boundary - lum) >= 80)
+        if eye or contrast:
+            protected.add(tuple(int(c) for c in rgb))
+    return sort_palette(protected)
 
 
 def extract_palette(images: Iterable[Arr], max_colors: int) -> List[RGB]:

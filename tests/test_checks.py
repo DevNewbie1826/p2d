@@ -60,8 +60,8 @@ def vertical_bands() -> np.ndarray:
 
 def frame_image(x0: int) -> np.ndarray:
     img = np.zeros((32, 24, 4), dtype=np.uint8)
-    img[4:28, x0 : x0 + 12, :3] = (80, 50, 40)
-    img[4:28, x0 : x0 + 12, 3] = 255
+    img[4:28, x0 : x0 + 17, :3] = (80, 50, 40)
+    img[4:28, x0 : x0 + 17, 3] = 255
     return img
 
 
@@ -281,11 +281,40 @@ class SeamTest(unittest.TestCase):
 
 
 class CheckTest(unittest.TestCase):
+    def test_speckle_noise_fails_singleton_cap_but_clusters_pass(self):
+        directory = h.tmp()
+        rng = np.random.default_rng(7)
+        colors = np.array([[40, 60, 160, 255], [90, 120, 220, 255], [240, 240, 255, 255]], dtype=np.uint8)
+        noise = colors[rng.integers(0, 3, size=(16, 16))]
+        noisy = h.save(noise, os.path.join(directory, "noise.png"))
+        code, out, err = h.run_cli("check", noisy, "--kind", "tile", "--size", "16x16", "--max-singletons", "20")
+        kv = h.kv(out)
+        self.assertEqual(code, 1, out + err)
+        self.assertGreater(float(kv["SINGLETON_PERCENT"]), 20)
+        self.assertTrue(any("SINGLETON" in reason for reason in reasons(out)))
+        blocks = colors[np.kron(rng.integers(0, 3, size=(4, 4)), np.ones((4, 4), dtype=int))]
+        clean = h.save(blocks, os.path.join(directory, "clean.png"))
+        code, out, err = h.run_cli(
+            "check", clean, "--kind", "tile", "--size", "16x16", "--axis", "none", "--max-singletons", "20"
+        )
+        self.assertEqual(code, 0, out + err)
+        self.assertLessEqual(float(h.kv(out)["SINGLETON_PERCENT"]), 20)
+        self.assertGreater(float(h.kv(out)["MEAN_CLUSTER"]), 3)
+        self.assertEqual(h.kv(out)["NOISE_REVIEW"], "no")
+        code, out, err = h.run_cli("check", noisy, "--kind", "tile", "--size", "16x16", "--axis", "none")
+        self.assertTrue(h.kv(out)["NOISE_REVIEW"].startswith("yes"), out)
+        self.assertEqual(code, 1, out)
+        self.assertTrue(any(reason.startswith("NOISE") for reason in reasons(out)), out)
+        code, out, err = h.run_cli("check", noisy, "--kind", "tile", "--size", "16x16", "--axis", "none", "--allow-noise")
+        self.assertEqual(code, 0, out)
+        code, out, err = h.run_cli("check", noisy, "--kind", "prop", "--size", "16x16", "--allow-opaque")
+        self.assertEqual(code, 0, out)
+
     def test_periodic_native_tile_passes(self):
         directory = h.tmp()
         tile = periodic_tile()
         path = h.save(tile, os.path.join(directory, "tile.png"))
-        code, out, err = h.run_cli("check", path, "--kind", "tile", "--size", "16x16")
+        code, out, err = h.run_cli("check", path, "--kind", "tile", "--size", "16x16", "--allow-noise")
         self.assertEqual(code, 0, out + err)
         kv = h.kv(out)
         self.assertEqual(kv["RESULT"], "PASS")
@@ -332,7 +361,7 @@ class CheckTest(unittest.TestCase):
     def test_wrong_size_fails(self):
         directory = h.tmp()
         path = h.save(periodic_tile(), os.path.join(directory, "tile.png"))
-        code, out, err = h.run_cli("check", path, "--kind", "tile", "--size", "32x32")
+        code, out, err = h.run_cli("check", path, "--kind", "tile", "--size", "32x32", "--allow-noise")
         self.assertEqual(code, 1, out + err)
         self.assertEqual(h.kv(out)["RESULT"], "FAIL")
         self.assertEqual(h.kv(out)["SIZE"], "16x16")
@@ -343,9 +372,9 @@ class CheckTest(unittest.TestCase):
     def test_too_many_colors_fails(self):
         directory = h.tmp()
         path = h.save(periodic_tile(), os.path.join(directory, "tile.png"))
-        code, out, err = h.run_cli("check", path, "--kind", "tile", "--size", "16x16")
+        code, out, err = h.run_cli("check", path, "--kind", "tile", "--size", "16x16", "--allow-noise")
         self.assertEqual(code, 0, out + err)
-        code, out, err = h.run_cli("check", path, "--kind", "tile", "--size", "16x16", "--max-colors", "3")
+        code, out, err = h.run_cli("check", path, "--kind", "tile", "--size", "16x16", "--allow-noise", "--max-colors", "3")
         self.assertEqual(code, 1, out + err)
         self.assertEqual(h.kv(out)["RESULT"], "FAIL")
         self.assertGreater(int(h.kv(out)["COLORS"]), 3)
@@ -464,12 +493,12 @@ class CheckTest(unittest.TestCase):
         directory = h.tmp()
         tile = periodic_tile()
         path = h.save(tile, os.path.join(directory, "solid.png"))
-        code, _, err = h.run_cli("check", path, "--kind", "tile", "--size", "16x16", "--axis", "none")
+        code, _, err = h.run_cli("check", path, "--kind", "tile", "--size", "16x16", "--allow-noise", "--axis", "none")
         self.assertEqual(code, 0, err)
         tile = tile.copy()
         tile[0, 0, 3] = 0
         path = h.save(tile, os.path.join(directory, "hole.png"))
-        code, out, err = h.run_cli("check", path, "--kind", "tile", "--size", "16x16", "--axis", "none")
+        code, out, err = h.run_cli("check", path, "--kind", "tile", "--size", "16x16", "--allow-noise", "--axis", "none")
         self.assertEqual(code, 1, out + err)
         found = reasons(out)
         self.assertTrue(any("transparent" in reason.lower() for reason in found))
