@@ -7,7 +7,7 @@
 //               [--model gpt-6.1-sol] [--effort medium] [--ref a.png --ref b.jpg]
 //   bun gen.mjs --prompt "a red fox in snow" --out fox.png
 //
-// Auth: first ~/.omo/auth.json ("chatgpt-subscription"), then ~/.codex/auth.json
+// Auth: ~/.omo/agent/auth.json, then ~/.omo/auth.json ("chatgpt-subscription"), then ~/.codex/auth.json
 // (Codex CLI ChatGPT login). Override with --auth <path>.
 
 import { readFileSync, writeFileSync, existsSync, mkdirSync } from "node:fs";
@@ -47,7 +47,7 @@ function jwtExpMs(token) {
 function loadAuth(explicitPath) {
   const candidates = explicitPath
     ? [resolve(explicitPath)]
-    : [join(homedir(), ".omo", "auth.json"), join(homedir(), ".codex", "auth.json")];
+    : [join(homedir(), ".omo", "agent", "auth.json"), join(homedir(), ".omo", "auth.json"), join(homedir(), ".codex", "auth.json")];
   const tried = [];
   for (const p of candidates) {
     if (!existsSync(p)) { tried.push(`${p} (missing)`); continue; }
@@ -61,8 +61,8 @@ function loadAuth(explicitPath) {
     } else { tried.push(`${p} (no ChatGPT login)`); continue; }
     expires ??= jwtExpMs(access);
     if (expires !== undefined && expires < Date.now()) {
-      throw new Error(`ChatGPT token in ${p} expired at ${new Date(expires).toISOString()}. ` +
-        `Re-login (omo: /login; Codex CLI: run any codex command or 'codex login') and retry.`);
+      tried.push(`${p} (expired ${new Date(expires).toISOString()}; re-login: omo /login or 'codex login')`);
+      continue;
     }
     return { access, accountId, source: p };
   }

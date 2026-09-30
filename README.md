@@ -32,7 +32,7 @@
 
 필요한 것: OmO, Python 3.9+, Pillow, numpy (`python3 -m pip install --user pillow numpy`).
 
-이미지 생성은 p2d에 포함된 `skills/p2d/scripts/gen_image.mjs`(codex-image 런타임 번들, 의존성 없음)로 사용자의 ChatGPT 구독을 사용합니다(Bun 또는 Node 18+, `~/.omo/auth.json` 또는 `~/.codex/auth.json`의 ChatGPT 로그인 필요). 다른 스킬 설치는 필요 없습니다.
+이미지 생성은 p2d에 포함된 `skills/p2d/scripts/gen_image.mjs`(codex-image 런타임 번들, 의존성 없음)로 사용자의 ChatGPT 구독을 사용합니다(Bun 또는 Node 18+, `~/.omo/agent/auth.json`, `~/.omo/auth.json` 또는 `~/.codex/auth.json`의 ChatGPT 로그인 필요). 다른 스킬 설치는 필요 없습니다.
 
 ```bash
 bun skills/p2d/scripts/gen_image.mjs --prompt-file prompt.txt --out out.png --size 1024x1024 --quality high \
