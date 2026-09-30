@@ -1,0 +1,14 @@
+{
+  "name": "p2d",
+  "version": "0.1.0",
+  "description": "p2d - prompt to 2D pixel-art game assets (tiles, walls, trims, props, RPG Maker characters, animations) for OmO.",
+  "private": true,
+  "keywords": ["omo", "omo-plugin", "skill", "pixel-art", "game-assets", "rpg-maker"],
+  "scripts": {
+    "test": "python3 -m unittest discover -s tests -v",
+    "verify": "node scripts/verify.mjs"
+  },
+  "pi": {
+    "skills": ["skills/p2d"]
+  }
+}
