@@ -22,6 +22,7 @@ COMMANDS = {
     "anchor": ("anchor", "Repeat a native sprite into equal key-color cells with exact integer scaling."),
     "gif": ("frames", "Animated GIF preview from frame PNGs."),
     "charset": ("charset", "Assemble an RPG Maker character sheet (2000, VX Ace, MV/MZ)."),
+    "face": ("face", "Face gate: listed eye pixels must be dark, opaque and on skin; writes a head crop."),
     "touch": ("edit", "Set or clear individual logical pixels (small face/detail repairs) within the palette."),
     "atlas": ("preview", "Pack PNGs into one sheet with a coordinate JSON."),
     "preview": ("preview", "Contact sheet (reference-style pack view) or tile repeat preview."),
