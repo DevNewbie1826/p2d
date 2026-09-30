@@ -42,3 +42,7 @@ Never loosen `--seam-max`, the frame gates, or the color caps to turn a FAIL int
 - `COLORS_BELOW_BUDGET`: the colour cap is below the tile budget (16: 3, 32: 4, 48: 4); review lost features.
 - `touch` refuses more than max(8, 2% of opaque pixels) changed pixels (exit 2). A repair that needs more is a redraw, not a touch; `--force-many` only when the user asked for a hand edit.
 - 24x32 (16px) character frames with 31-52% singletons (the measured RM2000 range) do not ask for noise review; other frame sizes keep the review.
+
+## Acceptance gate
+
+`pack accept` reruns `check` with the asset kind, the reserved size and axis and the pack palette; a FAIL exits 2 with `check fails: <reasons>`. Characters and animation frames also need a passing face gate (automatic, or `--face-report`; `--no-face "reason"` only for back views and visored helmets). Fix the cause and accept again; never loosen checks to get through. `--replace` is needed to overwrite an accepted entry; the previous one is kept in history.

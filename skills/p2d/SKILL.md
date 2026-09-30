@@ -57,10 +57,10 @@ Every prompt = the kind template from its reference + this pack line: `Flat rast
 2. `pixelize RAW --kind K --size WxH --pack DIR --out DIR/assets/<name>/<name>@<px>.png --scale 8` (the kind reference gives extra flags).
 3. `check FILE --kind K --size WxH --pack DIR` must print `RESULT: PASS`; tiles, walls and trims FAIL on scattered speckle (`NOISE`); props and frames print `NOISE_REVIEW: yes` for you to inspect (qc.md).
 4. Read the native PNG and `@8x` PNG beside the references and accepted assets: silhouette, readability at 1x, style match, flat color cells and hard edges. Do not judge a smoothly zoomed screenshot as the source PNG. If bevel-like shading remains across logical pixels, regenerate or repair the affected color clusters; palette quantization alone cannot remove that design.
-5. `pack accept DIR --name N --px P --raw RAW --file FILE`.
+5. `pack accept DIR --name N --px P --raw RAW --file FILE` reruns `check` and refuses a FAIL (pack.json unchanged). Characters and animation frames also need a passing face gate (it runs `face --auto` itself, or pass `--face-report`; `--no-face "reason"` only for back views or visored helmets). Replacing an accepted entry needs `--replace` (the old one stays in history). Accept only what also passed your visual review. Before you report, run `pack status DIR`.
 
 A FAIL at any step: read `references/qc.md`.
 
 ## 5. Deliver
 
-`preview DIR/assets/*/*.png --out DIR/previews/pack.png` (reference-style sheet: 16/32 versions side by side), read it, show it, and list the delivered files with their sizes.
+`pack status DIR` must end RESULT: OK; then `preview DIR/assets/*/*.png --out DIR/previews/pack.png` (reference-style sheet: 16/32 versions side by side), read it, show it, and list the delivered files with their sizes.

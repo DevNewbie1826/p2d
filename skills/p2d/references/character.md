@@ -47,11 +47,13 @@ Flat solid #FF00FF magenta background everywhere, no shadow, no floor, no text.
 ```
 
 ```
-p2d.py pixelize RAW --kind prop --size <frame> --anchor bottom --margin 1 --pack DIR --out DIR/work/<char>/master@<P>.png --scale 8
+p2d.py pixelize RAW --kind prop --size <frame> --subject-height <H> --anchor bottom --margin 1 --protect-auto --pack DIR --out DIR/work/<char>/master@<P>.png --scale 8
 p2d.py face DIR/work/<char>/master@<P>.png --auto --scale 8
 ```
 
 Immediately after pixelizing every master, run `face`, open its `CROP`, and require every `EYE_n` and `RESULT` to PASS before approval. Use the coordinate and repair rules in step 4.
+
+`<H>` is the measured opaque height, not the frame height: 16 -> 26 (RM2K 23-28), 32 -> 30 (PIPOYA 27-32), 48 -> 44 (40-47). Never let the character fill the whole frame. `--protect-auto` keeps small eye cores and strong highlights through palette reduction (see `PROTECTED:`); add `--protect HEX` for any other identity colour. `pack accept` runs the face gate on the accepted file itself.
 
 ### 2. Approval gate
 
