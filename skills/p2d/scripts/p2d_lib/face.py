@@ -75,13 +75,15 @@ def _skin_like(c: np.ndarray, skin: np.ndarray) -> bool:
     return r >= g >= b and r - b >= 40 and int(np.abs(c[:3].astype(int) - skin).sum()) <= MAX_SKIN_DISTANCE
 
 
-def _sclera(c: np.ndarray, skin: np.ndarray) -> bool:
-    return int(c[:3].min()) >= MIN_SCLERA and _luma(c) >= _luma(skin)
+def _sclera(c: np.ndarray, skin: np.ndarray, shaded: bool = False) -> bool:
+    threshold = _luma(skin) - MIN_CONTRAST if shaded else _luma(skin)
+    return (int(c[:3].min()) >= MIN_SCLERA and _luma(c) >= threshold
+            and (not shaded or int(np.ptp(c[:3])) <= 60))
 
 
-def _eye_white(c: np.ndarray, skin: np.ndarray) -> bool:
+def _eye_white(c: np.ndarray, skin: np.ndarray, shaded: bool = False) -> bool:
     """A pale skin highlight is not an eye's sclera anchor."""
-    return _sclera(c, skin) and not _skin_like(c, skin)
+    return _sclera(c, skin, shaded) and not _skin_like(c, skin)
 
 
 def _point(text: str) -> Tuple[int, int]:
@@ -138,9 +140,13 @@ def _judge(a: np.ndarray, skin: np.ndarray, group: List[Tuple[int, int]],
             if (nx, ny) in eye_set or not (0 <= nx < w and 0 <= ny < h):
                 continue
             n = a[ny, nx]
-            if n[3] and (_skin_like(n, skin) or _sclera(n, skin)):
+            if n[3] and (_skin_like(n, skin) or _sclera(n, skin, w == 32)):
                 face_sides += 1
-    needed = (2 if front else 1) * (len(group) if len(group) <= 6 else int(np.ceil(np.sqrt(len(group)))))
+    # Dense irises have interior pixels with no skin sides. Judge their exposed
+    # perimeter, while retaining the two-sides-per-pixel rule for thin cores.
+    dense = len({x for x, _ in group}) > 1 and len({y for _, y in group}) > 1
+    needed = (2 if front else 1) * (
+        int(np.ceil(np.sqrt(len(group)))) if dense or len(group) > 6 else len(group))
     if face_sides < needed:
         problems.append("not on skin (%d skin/sclera sides for %d eye pixels, need 2 each): hair, helmet or outline covers it" % (face_sides, len(group)))
     return problems
@@ -187,7 +193,7 @@ def detect_face(rgba: np.ndarray, skin_hint: Tuple[int, int] | None = None) -> F
             for dx, dy in NEIGHBOURS:
                 nx, ny = x + dx, y + dy
                 if (0 <= nx < w and 0 <= ny < stop and rgba[ny, nx, 3]
-                        and _eye_white(rgba[ny, nx], ramp)):
+                        and _eye_white(rgba[ny, nx], ramp, w == 32)):
                     area.add((nx, ny))
     near = set(area)
     for x, y in area:
@@ -199,7 +205,7 @@ def detect_face(rgba: np.ndarray, skin_hint: Tuple[int, int] | None = None) -> F
             continue
         sides = sum(
             0 <= x + dx < w and 0 <= y + dy < h and rgba[y + dy, x + dx, 3]
-            and (_skin_like(rgba[y + dy, x + dx], ramp) or _sclera(rgba[y + dy, x + dx], ramp))
+            and (_skin_like(rgba[y + dy, x + dx], ramp) or _sclera(rgba[y + dy, x + dx], ramp, w == 32))
             for dx, dy in NEIGHBOURS)
         if sides >= 2:
             area.add((x, y))
@@ -224,34 +230,34 @@ def detect_face(rgba: np.ndarray, skin_hint: Tuple[int, int] | None = None) -> F
             nx, ny = x + dx, y + dy
             if 0 <= nx < w and 0 <= ny < h and rgba[ny, nx, 3]:
                 n = rgba[ny, nx]
-                sides.append(_skin_like(n, skin) or _sclera(n, skin))
-                whites.append(_eye_white(n, skin))
+                sides.append(_skin_like(n, skin) or _sclera(n, skin, w == 32))
+                whites.append(_eye_white(n, skin, w == 32))
         if sum(sides) >= 2 or (sum(sides) and any(whites) and int(rgba[y, x, 2]) > int(rgba[y, x, 0])):
             candidates.add((x, y))
     anchors = {p for p in candidates if any(
-        0 <= nx < w and rgba[p[1], nx, 3] and _eye_white(rgba[p[1], nx], skin)
+        0 <= nx < w and rgba[p[1], nx, 3] and _eye_white(rgba[p[1], nx], skin, w == 32)
         for nx in (p[0] - 1, p[0] + 1)) and (
             int(np.ptp(rgba[p[1], p[0], :3])) >= 40 or
             sum(0 <= nx < w and rgba[p[1], nx, 3] and
-                (_skin_like(rgba[p[1], nx], skin) or _sclera(rgba[p[1], nx], skin))
+                (_skin_like(rgba[p[1], nx], skin) or _sclera(rgba[p[1], nx], skin, w == 32))
                 for nx in (p[0] - 1, p[0] + 1)) >= 2)}
     if not anchors:
         anchors = {p for p in candidates if any(
             0 <= p[0] + dx < w and 0 <= p[1] + dy < h and rgba[p[1] + dy, p[0] + dx, 3]
-            and _eye_white(rgba[p[1] + dy, p[0] + dx], skin) for dx, dy in NEIGHBOURS)}
+            and _eye_white(rgba[p[1] + dy, p[0] + dx], skin, w == 32) for dx, dy in NEIGHBOURS)}
     if anchors:
         candidates = anchors
     # Preserve a differently coloured upper/lower iris pixel with one face side;
     # do not grow sideways into adjacent hair or outline.
     for x, y in sorted(candidates):
-        if not any(0 <= nx < w and rgba[y, nx, 3] and _eye_white(rgba[y, nx], skin)
+        if not any(0 <= nx < w and rgba[y, nx, 3] and _eye_white(rgba[y, nx], skin, w == 32)
                    for nx in (x - 1, x + 1)):
             continue
         for ny in (y - 1, y + 1):
             if (x, ny) not in dark:
                 continue
             sides = sum(0 <= nx < w and rgba[ny, nx, 3] and
-                        (_skin_like(rgba[ny, nx], skin) or _sclera(rgba[ny, nx], skin))
+                        (_skin_like(rgba[ny, nx], skin) or _sclera(rgba[ny, nx], skin, w == 32))
                         for nx in (x - 1, x + 1))
             if sides >= 2 or (sides and int(np.ptp(rgba[ny, x, :3])) >= 40):
                 candidates.add((x, ny))
@@ -276,8 +282,24 @@ def detect_face(rgba: np.ndarray, skin_hint: Tuple[int, int] | None = None) -> F
     # neighbour identifies them; keep the dark-core contrast test in _judge.
     coloured_groups = [g for g in _groups(sorted(coloured), rgba) if any(
         0 <= x+dx < w and 0 <= y+dy < h and rgba[y+dy, x+dx, 3]
-        and _eye_white(rgba[y+dy, x+dx], skin)
+        and _eye_white(rgba[y+dy, x+dx], skin, w == 32)
         for x, y in g for dx, dy in NEIGHBOURS)]
+    if w == 32:
+        # One iris can cross hue/contrast thresholds between its dark core and
+        # lower ramp. Keep compact iris pieces separate from wide hair ramps.
+        compact = [g for g in coloured_groups
+                   if max(x for x, _ in g) - min(x for x, _ in g) <= 1
+                   and max(y for _, y in g) - min(y for _, y in g) <= 3]
+        cores = candidates | {p for g in compact for p in g}
+        for x, y in sorted(cores):
+            if not any(0 <= nx < w and _eye_white(rgba[y, nx], skin, True)
+                       for nx in (x - 1, x + 1)):
+                continue
+            for nx, ny in ((x, y + 1), (x + (1 if x < w / 2 else -1), y + 1)):
+                if (nx, ny) in coloured:
+                    cores.add((nx, ny))
+        candidates = cores
+        coloured_groups = []
     groups = [g for g in _groups(sorted(candidates)) + coloured_groups
               if 1 <= len(g) <= max(6, (w//8)**2)]
     x0, x1 = min(x for x, _ in face_skin), max(x for x, _ in face_skin)
@@ -885,7 +907,9 @@ def cmd_face(args: argparse.Namespace) -> int:
             left, top = min(x for x, _ in group), min(y for _, y in group)
             shapes.append({(x - left, y - top) for x, y in group})
             tops.append(top)
-        if shapes[0] != shapes[1] or tops[0] != tops[1]:
+        right_width = max(x for x, _ in shapes[1])
+        mirrored = {(right_width - x, y) for x, y in shapes[1]}
+        if (shapes[0] != shapes[1] and shapes[0] != mirrored) or tops[0] != tops[1]:
             emit("EYE_PAIR", "FAIL front eyes differ in shape/height")
             failures.append("front eyes differ in shape/height")
         else:

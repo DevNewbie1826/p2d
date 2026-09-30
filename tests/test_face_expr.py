@@ -201,6 +201,97 @@ def sample():
 
 
 class FaceExpressionTest(unittest.TestCase):
+    def test_32_dense_stamped_eyes_pass_auto_on_narrow_and_wide_eggs(self):
+        for width in (13, 22):
+            for color in ("blue", "#3FA0FF", "#FFD020"):
+                with self.subTest(width=width, color=color):
+                    d = h.tmp()
+                    src = h.save(egg(32, width), os.path.join(d, "src.png"))
+                    out = os.path.join(d, "normal.png")
+                    code, text, err = h.run_cli(
+                        "face", src, "--stamp", out, "--expr", "normal",
+                        "--eye-color", color)
+                    self.assertEqual(code, 0, text + err)
+                    self.assertEqual(len(detect_face(h.load(out))["eyes"]), 2)
+                    code, text, err = h.run_cli("face", out, "--auto")
+                    self.assertEqual(code, 0, text + err)
+                    self.assertEqual(h.kv(text)["EYE_PAIR"], "PASS")
+                    self.assertEqual(h.kv(text)["RESULT"], "PASS")
+
+    def test_32_dense_asymmetric_pair_still_fails_auto_pair(self):
+        d = h.tmp()
+        src = h.save(egg(32, 22), os.path.join(d, "src.png"))
+        out = os.path.join(d, "normal.png")
+        code, text, err = h.run_cli(
+            "face", src, "--stamp", out, "--expr", "normal", "--eye-color", "blue")
+        self.assertEqual(code, 0, text + err)
+        a = h.load(out)
+        iris = (a[..., :3] == (33, 37, 145)).all(axis=-1)
+        ys, xs = np.where(iris & (np.indices(iris.shape)[1] > 16))
+        a[ys.max() + 1, xs.max()] = (240, 200, 160, 255)
+        h.save(a, out)
+        code, text, err = h.run_cli("face", out, "--auto")
+        self.assertEqual(code, 1, text + err)
+        self.assertEqual(h.kv(text)["EYES"], "2")
+        self.assertEqual(h.kv(text)["EYE_PAIR"], "FAIL front eyes differ in shape/height")
+
+    def test_32_original_open_front_iris_pairs_pass_auto(self):
+        with open(os.path.join(LIBRARIES, "32.json")) as f:
+            library = json.load(f)
+        checked = 0
+        for expr, parts in library["facings"]["front"]["eyes"].items():
+            if (expr != "normal" and not expr.startswith("normal-pipoya-")) or "file" not in parts["source"]:
+                continue
+            cores = []
+            for part, flip in _parts_for(parts):
+                points = {(len(row) - 1 - x if flip else x, y)
+                          for y, row in enumerate(part["grid"])
+                          for x, role in enumerate(row) if role in "di"}
+                if points:
+                    x0, y0 = min(x for x, _ in points), min(y for _, y in points)
+                    points = {(x - x0, y - y0) for x, y in points}
+                cores.append(points)
+            # Only two complete, mirrored open irises declare a front pair.
+            if len(cores) != 2 or not cores[0] or not cores[1]:
+                continue
+            xmax = max(x for x, _ in cores[1])
+            if cores[0] != {(xmax - x, y) for x, y in cores[1]}:
+                continue
+            a, _, _, _, _ = source_case(library, "front", parts)
+            with self.subTest(variant=expr, file=parts["source"]["file"]):
+                path = h.save(a, os.path.join(h.tmp(), "original.png"))
+                code, text, err = h.run_cli("face", path, "--auto")
+                self.assertEqual(len(detect_face(a)["eyes"]), 2, text + err)
+                self.assertEqual(code, 0, text + err)
+                self.assertEqual(h.kv(text)["EYE_PAIR"], "PASS")
+            checked += 1
+        self.assertGreaterEqual(checked, 20)
+
+    def test_16_emotion_changes_eye_opening_and_keeps_mirrored_pair(self):
+        for width in (8, 13):
+            a = egg(16, width)
+            d = h.tmp()
+            src = h.save(a, os.path.join(d, "src.png"))
+            frames = {}
+            for expr in ("normal", "angry", "sad", "surprised"):
+                out = os.path.join(d, expr + ".png")
+                code, text, err = h.run_cli(
+                    "face", src, "--stamp", out, "--expr", expr,
+                    "--eye-color", "#3FA0FF")
+                self.assertEqual(code, 0, text + err)
+                frames[expr] = h.load(out)
+            left = (a.shape[1] - width) // 2
+            for expr in ("angry", "sad", "surprised"):
+                with self.subTest(width=width, expr=expr):
+                    region = frames[expr][:, left:left + width]
+                    self.assertTrue(np.array_equal(region, region[:, ::-1]))
+                    changed = np.any(frames[expr] != frames["normal"], axis=-1)
+                    self.assertGreaterEqual(int(changed[:, left:left + width // 2].sum()), 3)
+                    code, text, err = h.run_cli(
+                        "face", os.path.join(d, expr + ".png"), "--auto", "--expr", expr)
+                    self.assertEqual(code, 0, text + err)
+                    self.assertEqual(h.kv(text)["EYE_PAIR"], "PASS")
+
     def stamp(self, a=None, expr="normal", *extra):
         d = h.tmp()
         src = h.save(sample() if a is None else a, os.path.join(d, "src.png"))

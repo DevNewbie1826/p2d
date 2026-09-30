@@ -592,7 +592,7 @@
             "grid": [
               "ls",
               "wl",
-              "wi"
+              "wd"
             ]
           },
           "right": {
@@ -603,12 +603,12 @@
             "grid": [
               "sl",
               "lw",
-              "iw"
+              "dw"
             ]
           },
           "source": {
             "derived_from": "normal",
-            "how": "Move each inner lid pixel one row down toward the centre."
+            "how": "Slant each dark lid down toward the nose and shorten the iris to one dark pixel beneath it; mirror both openings."
           }
         },
         "sad": {
@@ -620,7 +620,7 @@
             "grid": [
               "sl",
               "ld",
-              "wi"
+              "wd"
             ]
           },
           "right": {
@@ -631,12 +631,12 @@
             "grid": [
               "ls",
               "dl",
-              "iw"
+              "dw"
             ]
           },
           "source": {
             "derived_from": "normal",
-            "how": "Move each outer lid pixel one row down; inner corners stay raised."
+            "how": "Slant each dark lid down outward and darken the lower iris for a drooping opening with raised inner corners; mirror both eyes."
           }
         },
         "surprised": {
@@ -646,9 +646,10 @@
               -1
             ],
             "grid": [
-              "ss",
+              "ww",
               "wd",
-              "wi"
+              "wi",
+              "ww"
             ]
           },
           "right": {
@@ -657,14 +658,15 @@
               -1
             ],
             "grid": [
-              "ss",
+              "ww",
               "dw",
-              "iw"
+              "iw",
+              "ww"
             ]
           },
           "source": {
             "derived_from": "normal",
-            "how": "Erase the lid row to skin, retaining the tiny open iris/sclera."
+            "how": "Replace the lid with sclera above the iris and add a lower sclera row for a taller startled opening; mirror both eyes."
           }
         },
         "happy": {
