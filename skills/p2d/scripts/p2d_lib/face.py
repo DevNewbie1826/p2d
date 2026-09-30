@@ -240,7 +240,7 @@ def _luma_of(c: Sequence[int]) -> float:
     return 0.299 * c[0] + 0.587 * c[1] + 0.114 * c[2]
 
 
-def stamp_eyes(a: np.ndarray, detection: FaceDetection) -> Tuple[np.ndarray, int, int, int]:
+def stamp_eyes(a: np.ndarray, detection: FaceDetection, eye_colors: List[Tuple[int, int, int]] | None = None) -> Tuple[np.ndarray, int, int, int]:
     """Redraw both front eyes with the measured RM2000 construction, palette-preserving.
 
     Per eye (left eye shown, right eye mirrored): a dark lid pixel above the iris,
@@ -263,6 +263,8 @@ def stamp_eyes(a: np.ndarray, detection: FaceDetection) -> Tuple[np.ndarray, int
     dark_blue = [c for c in candidates if _luma_of(c) < _luma_of(iris_light)]
     iris_dark = min(dark_blue, key=_luma_of) if dark_blue else darkest
     sclera = colours[int(np.argmax(lumas))]
+    if eye_colors:
+        iris_dark, iris_light, sclera = (np.array(c) for c in eye_colors)
     eyes = detection["eyes"]
     if len(eyes) == 2:
         left, right = sorted(eyes, key=lambda g: min(x for x, _ in g))
@@ -306,7 +308,14 @@ def cmd_face(args: argparse.Namespace) -> int:
     h, w = a.shape[:2]
     if getattr(args, "stamp", None):
         detection = detect_face(a, _point(args.skin) if args.skin else None)
-        out, lx, rx, top = stamp_eyes(a, detection)
+        eye_colors = [parse_hex(v) for v in args.eye_colors.split(",")] if args.eye_colors else None
+        if eye_colors is not None and len(eye_colors) != 3:
+            raise P2DError("--eye-colors needs three colours: iris dark, iris light, sclera")
+        existing = {tuple(int(v) for v in c) for c in a[a[..., 3] > 0][:, :3]}
+        out, lx, rx, top = stamp_eyes(a, detection, eye_colors)
+        if eye_colors:
+            added = [c for c in eye_colors if tuple(c) not in existing]
+            emit("EYE_COLORS_ADDED", " ".join("#%02X%02X%02X" % c for c in added) or "none")
         save_rgba(out, args.stamp)
         emit("STAMPED", "%d %d %d -> %s" % (lx, rx, top, args.stamp))
         emit("NEXT", "open the image, then run face --auto on it")
@@ -372,6 +381,7 @@ def cmd_face(args: argparse.Namespace) -> int:
 def configure(name: str, parser: argparse.ArgumentParser) -> Callable[[argparse.Namespace], int]:
     parser.add_argument("image", help="finished character frame or face PNG")
     parser.add_argument("--stamp", metavar="OUT", help="16px only: redraw both front eyes with the measured RM2000 construction (lid, 1x2 dark/light iris, outer sclera, identical pair) into OUT")
+    parser.add_argument("--eye-colors", metavar="DARK,LIGHT,SCLERA", help="with --stamp: dedicated eye colours (RM2000 blue eyes: #212591,#1D73D6,#FFFFFF); new colours are reported")
     parser.add_argument("--auto", action="store_true", help="detect skin and eyes without typing coordinates")
     parser.add_argument("--eyes", nargs="+", help="every eye pixel X,Y (1-based counting not used: 0,0 is top-left)")
     parser.add_argument("--skin", help="one face skin pixel X,Y (optional hint with --auto)")

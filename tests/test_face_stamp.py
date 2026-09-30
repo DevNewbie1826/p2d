@@ -56,6 +56,16 @@ class FaceStampTest(unittest.TestCase):
         self.assertEqual(code, 0, text + err)
         self.assertTrue(colors(out) <= colors(src))
 
+    def test_stamp_with_eye_colors_draws_bright_iris_and_white_sclera(self):
+        src = os.path.join(FIX, "knight-asym-16.png")
+        out = os.path.join(h.tmp(), "stamped.png")
+        code, text, err = h.run_cli("face", src, "--stamp", out, "--eye-colors", "#212591,#1D73D6,#FFFFFF")
+        self.assertEqual(code, 0, text + err)
+        self.assertTrue({(0x21, 0x25, 0x91), (0x1D, 0x73, 0xD6), (0xFF, 0xFF, 0xFF)} <= colors(out))
+        self.assertIn("EYE_COLORS_ADDED", text)
+        code, text, err = h.run_cli("face", out, "--auto")
+        self.assertEqual(code, 0, text + err)
+
     def test_stamp_refuses_non_16px_frames(self):
         big = h.save(np.zeros((48, 48, 4), np.uint8), os.path.join(h.tmp(), "b.png"))
         code, text, err = h.run_cli("face", big, "--stamp", os.path.join(h.tmp(), "o.png"))
