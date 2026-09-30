@@ -60,8 +60,8 @@ def vertical_bands() -> np.ndarray:
 
 def frame_image(x0: int) -> np.ndarray:
     img = np.zeros((32, 24, 4), dtype=np.uint8)
-    img[4:28, x0 : x0 + 12, :3] = (80, 50, 40)
-    img[4:28, x0 : x0 + 12, 3] = 255
+    img[4:28, x0 : x0 + 17, :3] = (80, 50, 40)
+    img[4:28, x0 : x0 + 17, 3] = 255
     return img
 
 

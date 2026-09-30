@@ -32,6 +32,8 @@ class AcceptGateTest(unittest.TestCase):
         self.raw = h.save(h.native_art(4, 4, h.DUNGEON), h.kv(out)["OUTPUT"])
         self.final = os.path.join(self.directory, "assets", "asset.png")
         a = face() if kind == "character" else np.zeros((16, 16, 4), dtype=np.uint8)
+        if kind == "character":
+            a[18:30, 3:21] = (100, 100, 120, 255)
         if kind != "character":
             a[2:-2, 2:-2] = (100, 80, 60, 255)
         h.save(a, self.final)

@@ -14,6 +14,9 @@ CUTOUT = ("prop", "frame")
 KINDS = SURFACE + CUTOUT
 
 
+MIN_CHIBI_RATIO = 0.62
+
+
 def default_axis(kind: str, width: int, height: int) -> str:
     if kind == "tile":
         return "xy"
@@ -234,6 +237,13 @@ def cmd_check(args: argparse.Namespace) -> int:
                     emit("SEAM_%s_EDGE_REVIEW" % name.upper(), "opposite edges identical: check the 4x4 repeat for a copied edge")
         if ratio > args.seam_max:
             reasons.append("SEAM_%s %.4f too high" % (name.upper(), ratio))
+    if args.kind == "frame" and (width, height) == (24, 32):
+        ys, xs = np.nonzero(rgba[..., 3] > 0)
+        if len(xs):
+            ratio_wh = (xs.max() - xs.min() + 1) / float(ys.max() - ys.min() + 1)
+            emit("PROPORTION", "%.2f" % ratio_wh)
+            if ratio_wh < MIN_CHIBI_RATIO:
+                reasons.append("PROPORTION %.2f below %.2f: too thin for a 16px chibi character (RM2000 originals 0.67-0.83 width/height)" % (ratio_wh, MIN_CHIBI_RATIO))
     if args.max_singletons is not None and singleton_percent > args.max_singletons:
         reasons.append("SINGLETON_PERCENT %.1f over %.1f (speckle noise)" % (singleton_percent, args.max_singletons))
     if args.kind in CUTOUT and not opaque.any():

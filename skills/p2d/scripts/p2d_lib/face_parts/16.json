@@ -1,0 +1,1936 @@
+{
+  "px": 16,
+  "frame": [
+    24,
+    32
+  ],
+  "sources": [
+    {
+      "id": "rm2k-user",
+      "path": "/tmp/p2d-study/rm2k-user/charset.png",
+      "note": "Original 288x256 keyed #009392; split 24x32 frames, rows up/right/down/left. Source boxes are frame-local. Native eye iris 1x2; hair occlusion retained as keep pixels. Mouths omitted."
+    },
+    {
+      "id": "rm2k-user-right",
+      "path": "/tmp/p2d-study/rm2k-user/charset.png",
+      "note": "Original right-facing frame; source box is unmirrored, role grid horizontally normalized to left."
+    },
+    {
+      "id": "puny-base",
+      "path": "/tmp/p2d-study/chars16/originals/Puny-Characters/Character-Base.png",
+      "note": "Native pixels from 768x256 original with 32x32 animation cells; no resizing. Eye-free Slime silhouette, headgear rims, tusks and clothing excluded from face parts."
+    },
+    {
+      "id": "puny-mage",
+      "path": "/tmp/p2d-study/chars16/originals/Puny-Characters/Mage-Cyan.png",
+      "note": "Native pixels from 768x256 original with 32x32 animation cells; no resizing. Eye-free Slime silhouette, headgear rims, tusks and clothing excluded from face parts."
+    },
+    {
+      "id": "puny-base-right",
+      "path": "/tmp/p2d-study/chars16/originals/Puny-Characters/Character-Base.png",
+      "note": "Native pixels from 768x256 original with 32x32 animation cells; no resizing. Eye-free Slime silhouette, headgear rims, tusks and clothing excluded from face parts. Source box is unmirrored; grid is horizontally normalized to left."
+    },
+    {
+      "id": "puny-mage-right",
+      "path": "/tmp/p2d-study/chars16/originals/Puny-Characters/Mage-Cyan.png",
+      "note": "Native pixels from 768x256 original with 32x32 animation cells; no resizing. Eye-free Slime silhouette, headgear rims, tusks and clothing excluded from face parts. Source box is unmirrored; grid is horizontally normalized to left."
+    },
+    {
+      "id": "alex-idle",
+      "path": "/tmp/p2d-study/chars16/originals/16x16 Character/Idle_0.png",
+      "note": "Native 16x16 action sprite; headband is not brow, mouth absent. Death pose changes dark eyes to single white pixels."
+    },
+    {
+      "id": "alex-death",
+      "path": "/tmp/p2d-study/chars16/originals/16x16 Character/Death_0.png",
+      "note": "Native 16x16 action sprite; headband is not brow, mouth absent. Death pose changes dark eyes to single white pixels."
+    },
+    {
+      "id": "alex-idle-right",
+      "path": "/tmp/p2d-study/chars16/originals/16x16 Character/Idle_0.png",
+      "note": "Native 16x16 action sprite; headband is not brow, mouth absent. Death pose changes dark eyes to single white pixels. Source box is unmirrored; grid is horizontally normalized to left."
+    },
+    {
+      "id": "alex-death-right",
+      "path": "/tmp/p2d-study/chars16/originals/16x16 Character/Death_0.png",
+      "note": "Native 16x16 action sprite; headband is not brow, mouth absent. Death pose changes dark eyes to single white pixels. Source box is unmirrored; grid is horizontally normalized to left."
+    }
+  ],
+  "facings": {
+    "front": {
+      "anchor": "cx = skin-region centre column (RM2000 frame x=12); ey = top row of iris (standing frame y=15). Left/right names refer to image sides.",
+      "eyes": {
+        "normal": {
+          "left": {
+            "at": [
+              -3,
+              -1
+            ],
+            "grid": [
+              "ll",
+              "wd",
+              "wi"
+            ]
+          },
+          "right": {
+            "at": [
+              1,
+              -1
+            ],
+            "grid": [
+              "ll",
+              "dw",
+              "iw"
+            ]
+          },
+          "source": {
+            "id": "rm2k-user",
+            "file": "char-07-down-c1.png",
+            "box": [
+              9,
+              14,
+              6,
+              3
+            ]
+          }
+        },
+        "normal-rm-01": {
+          "left": {
+            "at": [
+              -3,
+              -1
+            ],
+            "grid": [
+              ".l",
+              ".d",
+              "wi"
+            ]
+          },
+          "right": {
+            "at": [
+              1,
+              -1
+            ],
+            "grid": [
+              "ll",
+              "dw",
+              "iw"
+            ]
+          },
+          "source": {
+            "id": "rm2k-user",
+            "file": "char-01-down-c0.png",
+            "box": [
+              9,
+              15,
+              6,
+              3
+            ]
+          }
+        },
+        "normal-rm-02": {
+          "left": {
+            "at": [
+              -3,
+              -1
+            ],
+            "grid": [
+              "Sl",
+              ".d",
+              "wi"
+            ]
+          },
+          "right": {
+            "at": [
+              1,
+              -1
+            ],
+            "grid": [
+              "ll",
+              "dw",
+              "iw"
+            ]
+          },
+          "source": {
+            "id": "rm2k-user",
+            "file": "char-01-down-c1.png",
+            "box": [
+              9,
+              14,
+              6,
+              3
+            ]
+          }
+        },
+        "normal-rm-03": {
+          "left": {
+            "at": [
+              -3,
+              -1
+            ],
+            "grid": [
+              "ll",
+              "wd",
+              "wi"
+            ]
+          },
+          "right": {
+            "at": [
+              1,
+              -1
+            ],
+            "grid": [
+              ".l",
+              "dw",
+              "iw"
+            ]
+          },
+          "source": {
+            "id": "rm2k-user",
+            "file": "char-02-down-c0.png",
+            "box": [
+              9,
+              15,
+              6,
+              3
+            ]
+          }
+        },
+        "normal-rm-04": {
+          "left": {
+            "at": [
+              -3,
+              -1
+            ],
+            "grid": [
+              "ll",
+              "wd",
+              "wi"
+            ]
+          },
+          "right": {
+            "at": [
+              1,
+              -1
+            ],
+            "grid": [
+              "l.",
+              "dw",
+              "iw"
+            ]
+          },
+          "source": {
+            "id": "rm2k-user",
+            "file": "char-02-down-c1.png",
+            "box": [
+              9,
+              14,
+              6,
+              3
+            ]
+          }
+        },
+        "normal-rm-05": {
+          "left": {
+            "at": [
+              -3,
+              -1
+            ],
+            "grid": [
+              "ll",
+              "wd",
+              "wd"
+            ]
+          },
+          "right": {
+            "at": [
+              1,
+              -1
+            ],
+            "grid": [
+              "ll",
+              "dw",
+              "dw"
+            ]
+          },
+          "source": {
+            "id": "rm2k-user",
+            "file": "char-03-down-c0.png",
+            "box": [
+              9,
+              14,
+              6,
+              3
+            ]
+          }
+        },
+        "normal-rm-07": {
+          "left": {
+            "at": [
+              -3,
+              -1
+            ],
+            "grid": [
+              "l.",
+              "wd",
+              "wd"
+            ]
+          },
+          "right": {
+            "at": [
+              1,
+              -1
+            ],
+            "grid": [
+              "ll",
+              "dw",
+              "iw"
+            ]
+          },
+          "source": {
+            "id": "rm2k-user",
+            "file": "char-05-down-c0.png",
+            "box": [
+              9,
+              15,
+              6,
+              3
+            ]
+          }
+        },
+        "normal-rm-08": {
+          "left": {
+            "at": [
+              -3,
+              -1
+            ],
+            "grid": [
+              "ll",
+              "wd",
+              "wi"
+            ]
+          },
+          "right": {
+            "at": [
+              1,
+              -1
+            ],
+            "grid": [
+              ".l",
+              "dw",
+              "dw"
+            ]
+          },
+          "source": {
+            "id": "rm2k-user",
+            "file": "char-05-down-c2.png",
+            "box": [
+              9,
+              15,
+              6,
+              3
+            ]
+          }
+        },
+        "normal-rm-09": {
+          "left": {
+            "at": [
+              -3,
+              -1
+            ],
+            "grid": [
+              ".l",
+              "wd",
+              "wi"
+            ]
+          },
+          "right": {
+            "at": [
+              1,
+              -1
+            ],
+            "grid": [
+              "ll",
+              "dw",
+              "iw"
+            ]
+          },
+          "source": {
+            "id": "rm2k-user",
+            "file": "char-08-down-c2.png",
+            "box": [
+              9,
+              15,
+              6,
+              3
+            ]
+          }
+        },
+        "normal-puny": {
+          "left": {
+            "at": [
+              -3,
+              0
+            ],
+            "grid": [
+              "wd",
+              "wd"
+            ]
+          },
+          "right": {
+            "at": [
+              1,
+              0
+            ],
+            "grid": [
+              "dw",
+              "dw"
+            ]
+          },
+          "source": {
+            "id": "puny-base",
+            "file": "Character-Base.png",
+            "box": [
+              13,
+              15,
+              6,
+              2
+            ]
+          }
+        },
+        "normal-puny-slit": {
+          "left": {
+            "at": [
+              -3,
+              0
+            ],
+            "grid": [
+              "wd"
+            ]
+          },
+          "right": {
+            "at": [
+              1,
+              0
+            ],
+            "grid": [
+              "dw"
+            ]
+          },
+          "source": {
+            "id": "puny-mage",
+            "file": "Mage-Cyan.png",
+            "box": [
+              13,
+              16,
+              6,
+              1
+            ]
+          }
+        },
+        "normal-alex": {
+          "left": {
+            "at": [
+              -2,
+              0
+            ],
+            "grid": [
+              "d"
+            ]
+          },
+          "right": {
+            "at": [
+              0,
+              0
+            ],
+            "grid": [
+              "d"
+            ]
+          },
+          "source": {
+            "id": "alex-idle",
+            "file": "Idle_0.png",
+            "box": [
+              6,
+              5,
+              3,
+              1
+            ]
+          }
+        },
+        "white-alex": {
+          "left": {
+            "at": [
+              -2,
+              0
+            ],
+            "grid": [
+              "w"
+            ]
+          },
+          "right": {
+            "at": [
+              0,
+              0
+            ],
+            "grid": [
+              "w"
+            ]
+          },
+          "source": {
+            "id": "alex-death",
+            "file": "Death_0.png",
+            "box": [
+              6,
+              7,
+              3,
+              1
+            ]
+          }
+        },
+        "closed": {
+          "left": {
+            "at": [
+              -3,
+              -1
+            ],
+            "grid": [
+              "ll",
+              "ss",
+              "ss"
+            ]
+          },
+          "right": {
+            "at": [
+              1,
+              -1
+            ],
+            "grid": [
+              "ll",
+              "ss",
+              "ss"
+            ]
+          },
+          "source": {
+            "derived_from": "normal",
+            "how": "Keep the two-pixel lid row; replace both iris/sclera rows with skin."
+          }
+        },
+        "wink-l": {
+          "left": {
+            "at": [
+              -3,
+              -1
+            ],
+            "grid": [
+              "ll",
+              "ss",
+              "ss"
+            ]
+          },
+          "right": {
+            "at": [
+              1,
+              -1
+            ],
+            "grid": [
+              "ll",
+              "dw",
+              "iw"
+            ]
+          },
+          "source": {
+            "derived_from": "normal",
+            "how": "Close only image-left eye; replace its iris/sclera with skin."
+          }
+        },
+        "wink-r": {
+          "left": {
+            "at": [
+              -3,
+              -1
+            ],
+            "grid": [
+              "ll",
+              "wd",
+              "wi"
+            ]
+          },
+          "right": {
+            "at": [
+              1,
+              -1
+            ],
+            "grid": [
+              "ll",
+              "ss",
+              "ss"
+            ]
+          },
+          "source": {
+            "derived_from": "normal",
+            "how": "Close only image-right eye; replace its iris/sclera with skin."
+          }
+        },
+        "angry": {
+          "left": {
+            "at": [
+              -3,
+              -1
+            ],
+            "grid": [
+              "ls",
+              "wl",
+              "wi"
+            ]
+          },
+          "right": {
+            "at": [
+              1,
+              -1
+            ],
+            "grid": [
+              "sl",
+              "lw",
+              "iw"
+            ]
+          },
+          "source": {
+            "derived_from": "normal",
+            "how": "Move each inner lid pixel one row down toward the centre."
+          }
+        },
+        "sad": {
+          "left": {
+            "at": [
+              -3,
+              -1
+            ],
+            "grid": [
+              "sl",
+              "ld",
+              "wi"
+            ]
+          },
+          "right": {
+            "at": [
+              1,
+              -1
+            ],
+            "grid": [
+              "ls",
+              "dl",
+              "iw"
+            ]
+          },
+          "source": {
+            "derived_from": "normal",
+            "how": "Move each outer lid pixel one row down; inner corners stay raised."
+          }
+        },
+        "surprised": {
+          "left": {
+            "at": [
+              -3,
+              -1
+            ],
+            "grid": [
+              "ss",
+              "wd",
+              "wi"
+            ]
+          },
+          "right": {
+            "at": [
+              1,
+              -1
+            ],
+            "grid": [
+              "ss",
+              "dw",
+              "iw"
+            ]
+          },
+          "source": {
+            "derived_from": "normal",
+            "how": "Erase the lid row to skin, retaining the tiny open iris/sclera."
+          }
+        },
+        "happy": {
+          "left": {
+            "at": [
+              -3,
+              -1
+            ],
+            "grid": [
+              "sl",
+              "ls",
+              "ss"
+            ]
+          },
+          "right": {
+            "at": [
+              1,
+              -1
+            ],
+            "grid": [
+              "ls",
+              "sl",
+              "ss"
+            ]
+          },
+          "source": {
+            "derived_from": "normal",
+            "how": "Replace iris/sclera with skin; bend each closed lid into a two-pixel upward arc."
+          }
+        },
+        "patch-l": {
+          "left": {
+            "at": [
+              -4,
+              -1
+            ],
+            "grid": [
+              "ppp",
+              ".pp",
+              ".pp"
+            ]
+          },
+          "right": {
+            "at": [
+              1,
+              -1
+            ],
+            "grid": [
+              "ll",
+              "dw",
+              "iw"
+            ]
+          },
+          "source": {
+            "derived_from": "normal",
+            "how": "Cover image-left eye box with p and extend a one-pixel strap outward."
+          }
+        },
+        "patch-r": {
+          "left": {
+            "at": [
+              -3,
+              -1
+            ],
+            "grid": [
+              "ll",
+              "wd",
+              "wi"
+            ]
+          },
+          "right": {
+            "at": [
+              1,
+              -1
+            ],
+            "grid": [
+              "ppp",
+              "pp.",
+              "pp."
+            ]
+          },
+          "source": {
+            "derived_from": "normal",
+            "how": "Cover image-right eye box with p and extend a one-pixel strap outward."
+          }
+        },
+        "scar-l": {
+          "left": {
+            "at": [
+              -3,
+              -1
+            ],
+            "grid": [
+              "cls",
+              "wc.",
+              "wic"
+            ]
+          },
+          "right": {
+            "at": [
+              1,
+              -1
+            ],
+            "grid": [
+              "ll",
+              "dw",
+              "iw"
+            ]
+          },
+          "source": {
+            "derived_from": "normal",
+            "how": "Overlay a three-pixel c diagonal across image-left eye box, keeping its iris."
+          }
+        },
+        "scar-r": {
+          "left": {
+            "at": [
+              -3,
+              -1
+            ],
+            "grid": [
+              "ll",
+              "wd",
+              "wi"
+            ]
+          },
+          "right": {
+            "at": [
+              0,
+              -1
+            ],
+            "grid": [
+              "slc",
+              ".cw",
+              "ciw"
+            ]
+          },
+          "source": {
+            "derived_from": "normal",
+            "how": "Overlay a three-pixel c diagonal across image-right eye box, keeping its iris."
+          }
+        },
+        "one-eyed-l": {
+          "left": {
+            "at": [
+              -3,
+              -1
+            ],
+            "grid": [
+              "cls",
+              "scs",
+              "ssc"
+            ]
+          },
+          "right": {
+            "at": [
+              1,
+              -1
+            ],
+            "grid": [
+              "ll",
+              "dw",
+              "iw"
+            ]
+          },
+          "source": {
+            "derived_from": "normal",
+            "how": "Close image-left eye and overlay a three-pixel c diagonal; keep the other normal."
+          }
+        },
+        "one-eyed-r": {
+          "left": {
+            "at": [
+              -3,
+              -1
+            ],
+            "grid": [
+              "ll",
+              "wd",
+              "wi"
+            ]
+          },
+          "right": {
+            "at": [
+              0,
+              -1
+            ],
+            "grid": [
+              "slc",
+              "scs",
+              "css"
+            ]
+          },
+          "source": {
+            "derived_from": "normal",
+            "how": "Close image-right eye and overlay a three-pixel c diagonal; keep the other normal."
+          }
+        }
+      },
+      "brows": {
+        "normal": {
+          "left": {
+            "at": [
+              -3,
+              -1
+            ],
+            "grid": [
+              "ll"
+            ]
+          },
+          "right": {
+            "at": [
+              1,
+              -1
+            ],
+            "grid": [
+              "ll"
+            ]
+          },
+          "source": {
+            "id": "rm2k-user",
+            "file": "char-07-down-c1.png",
+            "box": [
+              9,
+              14,
+              6,
+              1
+            ]
+          }
+        },
+        "closed": {
+          "left": {
+            "at": [
+              -3,
+              -1
+            ],
+            "grid": [
+              ".."
+            ]
+          },
+          "right": {
+            "at": [
+              1,
+              -1
+            ],
+            "grid": [
+              ".."
+            ]
+          },
+          "source": {
+            "derived_from": "normal",
+            "how": "Keep the underlying eye construction; no additional brow pixels."
+          }
+        },
+        "wink-l": {
+          "left": {
+            "at": [
+              -3,
+              -1
+            ],
+            "grid": [
+              ".."
+            ]
+          },
+          "right": {
+            "at": [
+              1,
+              -1
+            ],
+            "grid": [
+              ".."
+            ]
+          },
+          "source": {
+            "derived_from": "normal",
+            "how": "Keep the underlying eye construction; no additional brow pixels."
+          }
+        },
+        "wink-r": {
+          "left": {
+            "at": [
+              -3,
+              -1
+            ],
+            "grid": [
+              ".."
+            ]
+          },
+          "right": {
+            "at": [
+              1,
+              -1
+            ],
+            "grid": [
+              ".."
+            ]
+          },
+          "source": {
+            "derived_from": "normal",
+            "how": "Keep the underlying eye construction; no additional brow pixels."
+          }
+        },
+        "angry": {
+          "left": {
+            "at": [
+              -3,
+              -2
+            ],
+            "grid": [
+              "ls",
+              "sl"
+            ]
+          },
+          "right": {
+            "at": [
+              1,
+              -2
+            ],
+            "grid": [
+              "sl",
+              "ls"
+            ]
+          },
+          "source": {
+            "derived_from": "normal",
+            "how": "Move the inner brow pixel down one row toward the centre."
+          }
+        },
+        "sad": {
+          "left": {
+            "at": [
+              -3,
+              -2
+            ],
+            "grid": [
+              "sl",
+              "ls"
+            ]
+          },
+          "right": {
+            "at": [
+              1,
+              -2
+            ],
+            "grid": [
+              "ls",
+              "sl"
+            ]
+          },
+          "source": {
+            "derived_from": "normal",
+            "how": "Move outer brow pixels down one row, raising the centre."
+          }
+        },
+        "surprised": {
+          "left": {
+            "at": [
+              -3,
+              -2
+            ],
+            "grid": [
+              "ll"
+            ]
+          },
+          "right": {
+            "at": [
+              1,
+              -2
+            ],
+            "grid": [
+              "ll"
+            ]
+          },
+          "source": {
+            "derived_from": "normal",
+            "how": "Raise the original two-pixel brow by one row."
+          }
+        },
+        "happy": {
+          "left": {
+            "at": [
+              -3,
+              -1
+            ],
+            "grid": [
+              ".."
+            ]
+          },
+          "right": {
+            "at": [
+              1,
+              -1
+            ],
+            "grid": [
+              ".."
+            ]
+          },
+          "source": {
+            "derived_from": "normal",
+            "how": "Keep the underlying eye construction; no additional brow pixels."
+          }
+        },
+        "patch-l": {
+          "left": {
+            "at": [
+              -3,
+              -1
+            ],
+            "grid": [
+              ".."
+            ]
+          },
+          "right": {
+            "at": [
+              1,
+              -1
+            ],
+            "grid": [
+              ".."
+            ]
+          },
+          "source": {
+            "derived_from": "normal",
+            "how": "Keep the underlying eye construction; no additional brow pixels."
+          }
+        },
+        "patch-r": {
+          "left": {
+            "at": [
+              -3,
+              -1
+            ],
+            "grid": [
+              ".."
+            ]
+          },
+          "right": {
+            "at": [
+              1,
+              -1
+            ],
+            "grid": [
+              ".."
+            ]
+          },
+          "source": {
+            "derived_from": "normal",
+            "how": "Keep the underlying eye construction; no additional brow pixels."
+          }
+        },
+        "scar-l": {
+          "left": {
+            "at": [
+              -3,
+              -1
+            ],
+            "grid": [
+              ".."
+            ]
+          },
+          "right": {
+            "at": [
+              1,
+              -1
+            ],
+            "grid": [
+              ".."
+            ]
+          },
+          "source": {
+            "derived_from": "normal",
+            "how": "Keep the underlying eye construction; no additional brow pixels."
+          }
+        },
+        "scar-r": {
+          "left": {
+            "at": [
+              -3,
+              -1
+            ],
+            "grid": [
+              ".."
+            ]
+          },
+          "right": {
+            "at": [
+              1,
+              -1
+            ],
+            "grid": [
+              ".."
+            ]
+          },
+          "source": {
+            "derived_from": "normal",
+            "how": "Keep the underlying eye construction; no additional brow pixels."
+          }
+        },
+        "one-eyed-l": {
+          "left": {
+            "at": [
+              -3,
+              -1
+            ],
+            "grid": [
+              ".."
+            ]
+          },
+          "right": {
+            "at": [
+              1,
+              -1
+            ],
+            "grid": [
+              ".."
+            ]
+          },
+          "source": {
+            "derived_from": "normal",
+            "how": "Keep the underlying eye construction; no additional brow pixels."
+          }
+        },
+        "one-eyed-r": {
+          "left": {
+            "at": [
+              -3,
+              -1
+            ],
+            "grid": [
+              ".."
+            ]
+          },
+          "right": {
+            "at": [
+              1,
+              -1
+            ],
+            "grid": [
+              ".."
+            ]
+          },
+          "source": {
+            "derived_from": "normal",
+            "how": "Keep the underlying eye construction; no additional brow pixels."
+          }
+        },
+        "normal-rm-01": {
+          "left": {
+            "at": [
+              -3,
+              -1
+            ],
+            "grid": [
+              ".l"
+            ]
+          },
+          "right": {
+            "at": [
+              1,
+              -1
+            ],
+            "grid": [
+              "ll"
+            ]
+          },
+          "source": {
+            "id": "rm2k-user",
+            "file": "char-01-down-c0.png",
+            "box": [
+              9,
+              15,
+              6,
+              1
+            ]
+          }
+        },
+        "normal-rm-02": {
+          "left": {
+            "at": [
+              -3,
+              -1
+            ],
+            "grid": [
+              "Sl"
+            ]
+          },
+          "right": {
+            "at": [
+              1,
+              -1
+            ],
+            "grid": [
+              "ll"
+            ]
+          },
+          "source": {
+            "id": "rm2k-user",
+            "file": "char-01-down-c1.png",
+            "box": [
+              9,
+              14,
+              6,
+              1
+            ]
+          }
+        },
+        "normal-rm-03": {
+          "left": {
+            "at": [
+              -3,
+              -1
+            ],
+            "grid": [
+              "ll"
+            ]
+          },
+          "right": {
+            "at": [
+              1,
+              -1
+            ],
+            "grid": [
+              ".l"
+            ]
+          },
+          "source": {
+            "id": "rm2k-user",
+            "file": "char-02-down-c0.png",
+            "box": [
+              9,
+              15,
+              6,
+              1
+            ]
+          }
+        },
+        "normal-rm-04": {
+          "left": {
+            "at": [
+              -3,
+              -1
+            ],
+            "grid": [
+              "ll"
+            ]
+          },
+          "right": {
+            "at": [
+              1,
+              -1
+            ],
+            "grid": [
+              "l."
+            ]
+          },
+          "source": {
+            "id": "rm2k-user",
+            "file": "char-02-down-c1.png",
+            "box": [
+              9,
+              14,
+              6,
+              1
+            ]
+          }
+        },
+        "normal-rm-05": {
+          "left": {
+            "at": [
+              -3,
+              -1
+            ],
+            "grid": [
+              "ll"
+            ]
+          },
+          "right": {
+            "at": [
+              1,
+              -1
+            ],
+            "grid": [
+              "ll"
+            ]
+          },
+          "source": {
+            "id": "rm2k-user",
+            "file": "char-03-down-c0.png",
+            "box": [
+              9,
+              14,
+              6,
+              1
+            ]
+          }
+        },
+        "normal-rm-07": {
+          "left": {
+            "at": [
+              -3,
+              -1
+            ],
+            "grid": [
+              "l."
+            ]
+          },
+          "right": {
+            "at": [
+              1,
+              -1
+            ],
+            "grid": [
+              "ll"
+            ]
+          },
+          "source": {
+            "id": "rm2k-user",
+            "file": "char-05-down-c0.png",
+            "box": [
+              9,
+              15,
+              6,
+              1
+            ]
+          }
+        },
+        "normal-rm-08": {
+          "left": {
+            "at": [
+              -3,
+              -1
+            ],
+            "grid": [
+              "ll"
+            ]
+          },
+          "right": {
+            "at": [
+              1,
+              -1
+            ],
+            "grid": [
+              ".l"
+            ]
+          },
+          "source": {
+            "id": "rm2k-user",
+            "file": "char-05-down-c2.png",
+            "box": [
+              9,
+              15,
+              6,
+              1
+            ]
+          }
+        },
+        "normal-rm-09": {
+          "left": {
+            "at": [
+              -3,
+              -1
+            ],
+            "grid": [
+              ".l"
+            ]
+          },
+          "right": {
+            "at": [
+              1,
+              -1
+            ],
+            "grid": [
+              "ll"
+            ]
+          },
+          "source": {
+            "id": "rm2k-user",
+            "file": "char-08-down-c2.png",
+            "box": [
+              9,
+              15,
+              6,
+              1
+            ]
+          }
+        }
+      },
+      "mouth": {
+        "none": {
+          "at": [
+            -1,
+            2
+          ],
+          "grid": [
+            ".."
+          ],
+          "source": {
+            "id": "rm2k-user",
+            "file": "char-07-down-c1.png",
+            "box": [
+              11,
+              17,
+              2,
+              1
+            ]
+          }
+        },
+        "neutral": {
+          "at": [
+            -1,
+            2
+          ],
+          "grid": [
+            "mm"
+          ],
+          "source": {
+            "derived_from": "none",
+            "how": "Add a two-pixel straight dark mouth to the mouthless source."
+          }
+        },
+        "smile": {
+          "at": [
+            -1,
+            1
+          ],
+          "grid": [
+            "m.",
+            "sm"
+          ],
+          "source": {
+            "derived_from": "none",
+            "how": "Add two dark mouth pixels diagonally descending toward the centre for a tiny smile."
+          }
+        },
+        "open": {
+          "at": [
+            -1,
+            2
+          ],
+          "grid": [
+            "m"
+          ],
+          "source": {
+            "derived_from": "none",
+            "how": "Add one dark pixel, the smallest open mouth at this scale."
+          }
+        },
+        "eat": {
+          "at": [
+            -1,
+            2
+          ],
+          "grid": [
+            "mt"
+          ],
+          "source": {
+            "derived_from": "none",
+            "how": "Add one dark mouth pixel and one light tongue/teeth pixel."
+          }
+        },
+        "frown": {
+          "at": [
+            -1,
+            1
+          ],
+          "grid": [
+            "sm",
+            "m."
+          ],
+          "source": {
+            "derived_from": "none",
+            "how": "Add two dark mouth pixels diagonally ascending toward the centre for a tiny frown."
+          }
+        }
+      }
+    },
+    "left": {
+      "anchor": "cx = visible iris column; ey = top row of visible iris. Extracted right-facing exceptions are normalized horizontally to left.",
+      "eyes": {
+        "normal": {
+          "eye": {
+            "at": [
+              0,
+              -1
+            ],
+            "grid": [
+              "ll",
+              "dw",
+              "iw"
+            ]
+          },
+          "source": {
+            "id": "rm2k-user",
+            "file": "char-01-left-c1.png",
+            "box": [
+              9,
+              14,
+              2,
+              3
+            ]
+          }
+        },
+        "normal-rm-02": {
+          "eye": {
+            "at": [
+              0,
+              -1
+            ],
+            "grid": [
+              "..",
+              "d.",
+              "iw"
+            ]
+          },
+          "source": {
+            "id": "rm2k-user",
+            "file": "char-02-left-c0.png",
+            "box": [
+              9,
+              15,
+              2,
+              3
+            ]
+          }
+        },
+        "normal-rm-03": {
+          "eye": {
+            "at": [
+              0,
+              -1
+            ],
+            "grid": [
+              "ll",
+              "dw",
+              "dw"
+            ]
+          },
+          "source": {
+            "id": "rm2k-user",
+            "file": "char-03-left-c0.png",
+            "box": [
+              8,
+              14,
+              2,
+              3
+            ]
+          }
+        },
+        "normal-rm-05": {
+          "eye": {
+            "at": [
+              0,
+              -1
+            ],
+            "grid": [
+              "l.",
+              "d.",
+              "iw"
+            ]
+          },
+          "source": {
+            "id": "rm2k-user",
+            "file": "char-05-left-c0.png",
+            "box": [
+              9,
+              15,
+              2,
+              3
+            ]
+          }
+        },
+        "normal-rm-06": {
+          "eye": {
+            "at": [
+              0,
+              -1
+            ],
+            "grid": [
+              "l.",
+              "dw",
+              "iw"
+            ]
+          },
+          "source": {
+            "id": "rm2k-user",
+            "file": "char-05-left-c1.png",
+            "box": [
+              9,
+              14,
+              2,
+              3
+            ]
+          }
+        },
+        "normal-rm-right-occluded": {
+          "eye": {
+            "at": [
+              0,
+              -1
+            ],
+            "grid": [
+              "..",
+              "d.",
+              "i."
+            ]
+          },
+          "source": {
+            "id": "rm2k-user-right",
+            "file": "char-01-right-c0.png",
+            "box": [
+              13,
+              15,
+              2,
+              3
+            ]
+          }
+        },
+        "normal-puny": {
+          "eye": {
+            "at": [
+              0,
+              0
+            ],
+            "grid": [
+              "dw",
+              "dw"
+            ]
+          },
+          "source": {
+            "id": "puny-base-right",
+            "file": "Character-Base.png",
+            "box": [
+              18,
+              111,
+              2,
+              2
+            ]
+          }
+        },
+        "normal-puny-slit": {
+          "eye": {
+            "at": [
+              0,
+              0
+            ],
+            "grid": [
+              "dw"
+            ]
+          },
+          "source": {
+            "id": "puny-mage-right",
+            "file": "Mage-Cyan.png",
+            "box": [
+              18,
+              112,
+              2,
+              1
+            ]
+          }
+        },
+        "normal-alex": {
+          "eye": {
+            "at": [
+              0,
+              0
+            ],
+            "grid": [
+              "d"
+            ]
+          },
+          "source": {
+            "id": "alex-idle-right",
+            "file": "Idle_0.png",
+            "box": [
+              8,
+              5,
+              1,
+              1
+            ]
+          }
+        },
+        "white-alex": {
+          "eye": {
+            "at": [
+              0,
+              0
+            ],
+            "grid": [
+              "w"
+            ]
+          },
+          "source": {
+            "id": "alex-death-right",
+            "file": "Death_0.png",
+            "box": [
+              8,
+              7,
+              1,
+              1
+            ]
+          }
+        },
+        "closed": {
+          "eye": {
+            "at": [
+              0,
+              -1
+            ],
+            "grid": [
+              "ll",
+              "ss",
+              "ss"
+            ]
+          },
+          "source": {
+            "derived_from": "normal",
+            "how": "Keep lid only; erase iris/sclera to skin."
+          }
+        },
+        "angry": {
+          "eye": {
+            "at": [
+              0,
+              -1
+            ],
+            "grid": [
+              "sl",
+              "lw",
+              "iw"
+            ]
+          },
+          "source": {
+            "derived_from": "normal",
+            "how": "Lower the nose-side lid pixel by one row."
+          }
+        },
+        "happy": {
+          "eye": {
+            "at": [
+              0,
+              -1
+            ],
+            "grid": [
+              "sl",
+              "ls",
+              "ss"
+            ]
+          },
+          "source": {
+            "derived_from": "normal",
+            "how": "Turn the closed lid into a two-pixel upward arc."
+          }
+        },
+        "patch": {
+          "eye": {
+            "at": [
+              0,
+              -1
+            ],
+            "grid": [
+              "ppp",
+              "pp.",
+              "pp."
+            ]
+          },
+          "source": {
+            "derived_from": "normal",
+            "how": "Cover eye box with p and extend a one-pixel strap outward."
+          }
+        },
+        "eat": {
+          "eye": {
+            "at": [
+              0,
+              -1
+            ],
+            "grid": [
+              "ll",
+              "dw",
+              "iw"
+            ]
+          },
+          "source": {
+            "derived_from": "normal",
+            "how": "Keep the normal eye while the eat mouth supplies tongue/teeth."
+          }
+        }
+      },
+      "mouth": {
+        "none": {
+          "at": [
+            -1,
+            2
+          ],
+          "grid": [
+            "."
+          ],
+          "source": {
+            "id": "rm2k-user",
+            "file": "char-01-left-c1.png",
+            "box": [
+              8,
+              17,
+              1,
+              1
+            ]
+          }
+        },
+        "neutral": {
+          "at": [
+            -1,
+            2
+          ],
+          "grid": [
+            "m"
+          ],
+          "source": {
+            "derived_from": "none",
+            "how": "Add a single dark mouth pixel to the mouthless side."
+          }
+        },
+        "smile": {
+          "at": [
+            -2,
+            1
+          ],
+          "grid": [
+            "m.",
+            "sm"
+          ],
+          "source": {
+            "derived_from": "none",
+            "how": "Add two dark mouth pixels diagonally descending toward the centre for a tiny smile."
+          }
+        },
+        "open": {
+          "at": [
+            -1,
+            2
+          ],
+          "grid": [
+            "m"
+          ],
+          "source": {
+            "derived_from": "none",
+            "how": "Add a single dark open-mouth pixel."
+          }
+        },
+        "eat": {
+          "at": [
+            -1,
+            2
+          ],
+          "grid": [
+            "mt"
+          ],
+          "source": {
+            "derived_from": "none",
+            "how": "Use one dark mouth pixel plus one light tongue/teeth pixel."
+          }
+        },
+        "frown": {
+          "at": [
+            -2,
+            1
+          ],
+          "grid": [
+            "sm",
+            "m."
+          ],
+          "source": {
+            "derived_from": "none",
+            "how": "Add two dark mouth pixels diagonally ascending toward the centre for a tiny frown."
+          }
+        }
+      }
+    },
+    "right": "mirror-of-left"
+  }
+}
