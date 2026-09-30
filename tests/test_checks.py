@@ -65,6 +65,120 @@ def frame_image(x0: int) -> np.ndarray:
     return img
 
 
+def outlined_prop() -> np.ndarray:
+    img = prop_image()
+    img[2, 2:14, :3] = (20, 24, 28)
+    img[13, 2:14, :3] = (20, 24, 28)
+    img[2:14, 2, :3] = (20, 24, 28)
+    img[2:14, 13, :3] = (20, 24, 28)
+    return img
+
+
+class OutlineCheckTest(unittest.TestCase):
+    def check(self, img: np.ndarray, *options: str):
+        path = h.save(img, os.path.join(h.tmp(), "outline.png"))
+        height, width = img.shape[:2]
+        return h.run_cli("check", path, "--kind", "prop", "--size", "%dx%d" % (width, height), *options)
+
+    def test_complete_dark_rim_passes(self):
+        code, out, err = self.check(outlined_prop(), "--outline-colors", "#14181c")
+        self.assertEqual(code, 0, out + err)
+        self.assertEqual(h.kv(out)["OUTLINE_UNCOVERED"], "0")
+        self.assertEqual(h.kv(out)["OUTLINE_UNCOVERED_COORDS"], "none")
+
+    def test_replaced_rim_pixel_fails_at_exact_coordinate(self):
+        img = outlined_prop()
+        img[2, 8, :3] = (80, 50, 40)
+        code, out, err = self.check(img, "--outline-colors", "14181c")
+        self.assertEqual(code, 1, out + err)
+        self.assertEqual(h.kv(out)["OUTLINE_UNCOVERED"], "1")
+        self.assertEqual(h.kv(out)["OUTLINE_UNCOVERED_COORDS"], "8,2")
+        self.assertEqual(reasons(out), ["OUTLINE_UNCOVERED 1"])
+
+    def test_diagonal_staircase_rim_passes(self):
+        img = np.zeros((16, 16, 4), dtype=np.uint8)
+        for y in range(3, 13):
+            img[y, y - 2 : 13] = (20, 24, 28, 255)
+            # Only four-neighbor boundary pixels need outline color.
+            img[y, y - 1 : 12, :3] = (80, 50, 40)
+        img[3, 1:13, :3] = (20, 24, 28)
+        img[12, 10:13, :3] = (20, 24, 28)
+        code, out, err = self.check(img, "--outline-colors", "14181c")
+        self.assertEqual(code, 0, out + err)
+        self.assertEqual(h.kv(out)["OUTLINE_UNCOVERED"], "0")
+
+    def test_external_hair_pixel_fails_for_frame(self):
+        img = outlined_prop()
+        img[1, 8] = (168, 123, 72, 255)
+        path = h.save(img, os.path.join(h.tmp(), "hair.png"))
+        code, out, err = h.run_cli(
+            "check", path, "--kind", "frame", "--size", "16x16", "--outline-colors", "14181c"
+        )
+        self.assertEqual(code, 1, out + err)
+        self.assertEqual(h.kv(out)["OUTLINE_UNCOVERED"], "1")
+        self.assertEqual(h.kv(out)["OUTLINE_UNCOVERED_COORDS"], "8,1")
+
+    def test_enclosed_transparency_does_not_need_inner_rim(self):
+        img = outlined_prop()
+        img[6:10, 6:10, 3] = 0
+        code, out, err = self.check(img, "--outline-colors", "14181c")
+        self.assertEqual(code, 0, out + err)
+        self.assertEqual(h.kv(out)["OUTLINE_UNCOVERED"], "0")
+
+    def test_diagonal_contact_does_not_connect_hole_to_exterior(self):
+        img = outlined_prop()
+        img[2, 2, 3] = 0
+        img[3, 3, 3] = 0
+        code, out, err = self.check(img, "--outline-colors", "14181c")
+        self.assertEqual(code, 0, out + err)
+        self.assertEqual(h.kv(out)["OUTLINE_UNCOVERED"], "0")
+
+    def test_canvas_boundary_is_exterior_even_when_opaque_allowed(self):
+        img = outlined_prop()[2:14, 2:14].copy()
+        img[0, 5, :3] = (80, 50, 40)
+        code, out, err = self.check(img, "--allow-opaque", "--outline-colors", "14181c")
+        self.assertEqual(code, 1, out + err)
+        self.assertEqual(h.kv(out)["OUTLINE_UNCOVERED"], "1")
+        self.assertEqual(h.kv(out)["OUTLINE_UNCOVERED_COORDS"], "5,0")
+
+    def test_palette_is_explicit_and_can_contain_multiple_colors(self):
+        img = outlined_prop()
+        img[2, 8, :3] = (200, 210, 220)
+        code, out, err = self.check(img, "--outline-colors", "14181c,#c8d2dc")
+        self.assertEqual(code, 0, out + err)
+        self.assertEqual(h.kv(out)["OUTLINE_UNCOVERED"], "0")
+
+    def test_empty_and_malformed_palettes_are_rejected(self):
+        for palette in ("", " ", ",", "14181c,", ",14181c", "14181c,,000000", "xyz", "##14181c"):
+            with self.subTest(palette=palette):
+                code, out, err = self.check(outlined_prop(), "--outline-colors", palette)
+                self.assertEqual(code, 2, out + err)
+                self.assertIn("outline", err.lower())
+
+    def test_outline_flag_is_rejected_for_surface(self):
+        path = h.save(periodic_tile(), os.path.join(h.tmp(), "tile.png"))
+        code, out, err = h.run_cli(
+            "check", path, "--kind", "tile", "--size", "16x16", "--outline-colors", "14181c"
+        )
+        self.assertEqual(code, 2, out + err)
+        self.assertIn("outline", err.lower())
+
+    def test_coordinates_are_bounded_but_count_is_complete(self):
+        code, out, err = self.check(prop_image(), "--outline-colors", "14181c")
+        self.assertEqual(code, 1, out + err)
+        self.assertEqual(h.kv(out)["OUTLINE_UNCOVERED"], "44")
+        coords = h.kv(out)["OUTLINE_UNCOVERED_COORDS"].split()
+        self.assertEqual(len(coords), 32)
+        self.assertEqual(coords[0], "2,2")
+        self.assertEqual(coords[-1], "13,12")
+
+    def test_no_flag_keeps_existing_behavior(self):
+        code, out, err = self.check(prop_image())
+        self.assertEqual(code, 0, out + err)
+        self.assertNotIn("OUTLINE_UNCOVERED", h.kv(out))
+        self.assertNotIn("OUTLINE_UNCOVERED_COORDS", h.kv(out))
+
+
 class SeamTest(unittest.TestCase):
     def test_offset_inverse_round_trip_is_exact(self):
         for width, height in ((16, 16), (15, 17)):

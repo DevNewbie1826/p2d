@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import argparse
+import re
 from typing import Any, Callable, Dict, List, Optional, Sequence, Tuple
 
 import numpy as np
@@ -85,7 +86,48 @@ def _key_color(args: argparse.Namespace, data: Optional[Dict[str, Any]]) -> Tupl
     return MAGENTA
 
 
+def _outline_colors(text: str) -> List[Tuple[int, int, int]]:
+    """Parse a nonempty, explicit RGB palette without inferring dark colors."""
+    entries = [entry.strip() for entry in text.split(",")]
+    if not all(re.fullmatch(r"#?(?:[0-9a-fA-F]{3}|[0-9a-fA-F]{6})", entry) for entry in entries):
+        raise argparse.ArgumentTypeError("outline colors must be a nonempty comma-separated HEX palette")
+    return [parse_hex(entry) for entry in entries]
+
+
+def _outline_gaps(rgba: Arr, palette: Sequence[Tuple[int, int, int]]) -> Tuple[int, List[Tuple[int, int]]]:
+    """Count exposed non-palette pixels; sample at most 32 zero-based (x, y) locations.
+
+    Both transparency flood-fill and foreground adjacency use four neighbors.
+    A transparent padded border makes canvas edges exterior even without alpha
+    pixels on the canvas. Enclosed transparent holes are not exterior. Alpha > 0
+    is foreground, consistent with other checks; nonbinary alpha still fails QC.
+    This tests the declared silhouette rule, not universal art quality.
+    """
+    transparent = np.pad(rgba[..., 3] == 0, 1, constant_values=True)
+    exterior = np.zeros(transparent.shape, dtype=bool)
+    exterior[0, 0] = True
+    pending = [(0, 0)]
+    height, width = transparent.shape
+    while pending:
+        y, x = pending.pop()
+        for ny, nx in ((y - 1, x), (y + 1, x), (y, x - 1), (y, x + 1)):
+            if 0 <= ny < height and 0 <= nx < width and transparent[ny, nx] and not exterior[ny, nx]:
+                exterior[ny, nx] = True
+                pending.append((ny, nx))
+    boundary = (rgba[..., 3] > 0) & (
+        exterior[:-2, 1:-1] | exterior[2:, 1:-1] | exterior[1:-1, :-2] | exterior[1:-1, 2:]
+    )
+    covered = np.zeros(boundary.shape, dtype=bool)
+    for entry in palette:
+        covered |= np.all(rgba[..., :3] == np.asarray(entry, dtype=np.uint8), axis=2)
+    gaps = boundary & ~covered
+    locations = [(int(x), int(y)) for y, x in np.argwhere(gaps)[:32]]
+    return int(gaps.sum()), locations
+
+
 def cmd_check(args: argparse.Namespace) -> int:
+    if args.outline_colors is not None and args.kind not in CUTOUT:
+        raise P2DError("--outline-colors is only supported for prop/frame")
     rgba = load_rgba(args.image)
     height, width = rgba.shape[:2]
     expected_w, expected_h = parse_size(args.size)
@@ -129,6 +171,12 @@ def cmd_check(args: argparse.Namespace) -> int:
         touched = [side for side in ("top", "left", "right") if side in edges.split(",")]
         if touched:
             reasons.append("frame touches %s edge" % ",".join(touched))
+    if args.outline_colors is not None:
+        uncovered, locations = _outline_gaps(rgba, args.outline_colors)
+        if uncovered:
+            reasons.append("OUTLINE_UNCOVERED %d" % uncovered)
+        emit("OUTLINE_UNCOVERED", uncovered)
+        emit("OUTLINE_UNCOVERED_COORDS", " ".join("%d,%d" % point for point in locations) or "none")
 
     emit("SIZE", "%dx%d" % (width, height))
     emit("COLORS", colors)
@@ -158,4 +206,14 @@ def configure(name: str, parser: argparse.ArgumentParser) -> Callable[[argparse.
     parser.add_argument("--seam-max", type=float, default=1.6, help="fail when a checked seam ratio is above this")
     parser.add_argument("--key", default=None, help="key color (default: pack key or #ff00ff)")
     parser.add_argument("--allow-opaque", action="store_true", help="allow a prop or frame with no transparent pixels")
+    parser.add_argument(
+        "--outline-colors",
+        type=_outline_colors,
+        default=None,
+        metavar="HEX[,HEX...]",
+        help="prop/frame only: require these RGB colors on the 4-neighbor exterior silhouette; "
+        "canvas boundary is exterior, enclosed transparent holes are ignored. "
+        "Reports count and up to 32 zero-based x,y coordinates (row order); "
+        "checks this outline rule, not overall art quality",
+    )
     return cmd_check

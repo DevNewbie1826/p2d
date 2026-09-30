@@ -18,7 +18,7 @@ Floor objects end up touching the bottom row (pixelize `--anchor bottom`); items
 ```
 A single <object> as a game prop for a 2D RPG Maker-style map, 3/4 top-down view showing the top and the front, <material, colors, details>.
 Exactly one object, centred, fully inside the image with a clear magenta margin on every side (pixelize moves floor objects down to the bottom row).
-Designed as a <W>x<H> pixel grid: each pixel a large crisp square block. Dark selective outline, light from the top-left.
+Designed as a <W>x<H> pixel grid: each pixel a flat single-color sample. Use the pack's outline convention and light direction.
 Flat solid #FF00FF magenta background everywhere around the object, no shadow on the background, no floor, no text, no other objects.
 <pack line from SKILL.md>
 ```
@@ -34,6 +34,19 @@ p2d.py check DIR/assets/<name>/<name>@<P>.png --kind prop --size WxH --pack DIR
 ```
 
 Add `--despeckle` when single stray pixels remain inside flat areas. A square object that truly fills its tile with no transparent corner needs `--allow-opaque` on `check`.
+
+## Outline and plane review
+
+Inspect the native PNG and integer-nearest enlargement; color count and transparency PASS alone cannot approve the art.
+
+- Separate the silhouette, material thickness, joins and highlights. For a crate, top/front/side planes and the front brace must read as distinct surfaces rather than parallel decorative bands.
+- Use a consistent outline convention across the pack. One logical pixel is a useful small-sprite starting point, not a universal rule: thicker shadow edges or structural beams need an intentional material/light reason.
+- When the user requests a continuous outline, do not reinterpret it as selective outlining. Interior colors must not escape the enclosing contour at corners or highlight edges. Record that convention in pack.json and inspect the whole exterior silhouette, not just the bounding box.
+- Check corners and diagonal step runs for accidental thickness changes, doubled rims and isolated dark pixels. Avoid a bright stripe following every dark outline equally; highlights should describe the light-facing material, not trace the entire silhouette.
+- Two adjacent rows are not inherently wrong. Reject them when an outline and highlight merge into an unintended thick band, obscure the plane transition, or create pillow-shaded/embossed edges.
+- If these fail, keep the candidate unaccepted. For local repairs use `touch` with pack colors and recheck the complete silhouette; for unclear geometry regenerate from the corrected description. Do not blindly thin every edge or erase intentional beam thickness.
+
+For a continuous-outline pack, explicitly choose its intended outline color(s) from the palette and run `check FILE --kind prop --size WxH --pack DIR --outline-colors '#222034'` (replace the example color with the pack's choice; comma-separate alternatives). `OUTLINE_UNCOVERED` must be zero. This checks foreground pixels adjacent to 4-connected exterior transparency; canvas edges count as exterior and enclosed holes do not. It does not judge plane geometry, intentional shading, or outline thickness. Diagnose the reported coordinates before using `touch`; save a sibling corrected file and review it at 1x and integer enlargement.
 
 ## Deliverables
 

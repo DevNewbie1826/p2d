@@ -21,7 +21,7 @@ Reserve `pack attempt DIR --name <char>-master --kind character --px P --prompt 
 ```
 An RPG Maker style JRPG overworld character sprite of <who: outfit, hair, colors, props>, facing the viewer (front view with a slight top-down tilt), standing still, full body, chibi proportions with the head about one third of the height.
 Exactly one character, centred, whole body inside the image with a clear magenta margin on every side.
-Designed as a <frame W>x<frame H> pixel grid: each pixel a large crisp square block. Dark outline, light from the top-left.
+Designed as a <frame W>x<frame H> pixel grid: each pixel a flat single-color sample. Use the pack's outline convention and light direction. If the outline is continuous, hair tips, face colors and equipment remain enclosed by it; no exposed interior colors at silhouette gaps.
 Flat solid #FF00FF magenta background everywhere, no shadow, no floor, no text.
 <pack line from SKILL.md>
 ```
@@ -72,6 +72,8 @@ p2d.py check FRAME --kind frame --size <frame> --pack DIR
 ```
 
 Keep the approved identity: same eye color and spacing as the master, same outline, no new colors, no change to the silhouette.
+
+For a continuous-outline pack, run `check FRAME --kind frame --size <frame> --pack DIR --outline-colors '<chosen dark palette colors, comma-separated>'` on the master and every delivered frame. Zero uncovered exterior boundary pixels is required; frame containment alone cannot detect hair/interior colors escaping the contour. Enclosed holes are ignored by this check. Inspect reported coordinates, preserve hair/eye identity, repair a sibling with `touch` if appropriate, and recheck. A closed contour alone does not prove good art.
 
 ### 5. Sheet and preview
 
