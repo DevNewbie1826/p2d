@@ -354,6 +354,11 @@ def cmd_raw_check(args: argparse.Namespace) -> int:
         emit("KEY_BORDER_PERCENT", round(float(border.mean() * 100), 2))
         if mask.mean() < 0.10 or border.mean() < 0.90:
             reasons.append("background must be flat key color (>=10% of pixels, >=90% of the border)")
+    else:
+        transparent = float((rgba[..., 3] < 255).mean() * 100)
+        emit("TRANSPARENT_PERCENT", round(transparent, 2))
+        if transparent > 0:
+            reasons.append("an opaque surface raw has transparent pixels; regenerate with an opaque, fully painted field")
     return emit_result(not reasons, reasons)
 
 

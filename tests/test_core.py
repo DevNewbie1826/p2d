@@ -221,6 +221,18 @@ class CliTest(unittest.TestCase):
         self.assertEqual(code, 1)
         self.assertEqual(h.kv(out)["RESULT"], "FAIL")
 
+    def test_raw_check_opaque_surface_rejects_transparency(self):
+        d = h.tmp()
+        surface = np.full((64, 64, 4), (40, 90, 200, 255), dtype=np.uint8)
+        solid = h.save(surface, os.path.join(d, "solid.png"))
+        code, out, _ = h.run_cli("raw-check", solid, "--bg", "none")
+        self.assertEqual(code, 0, out)
+        surface[8:40, 8:40, 3] = 0
+        holed = h.save(surface, os.path.join(d, "holed.png"))
+        code, out, _ = h.run_cli("raw-check", holed, "--bg", "none")
+        self.assertEqual(code, 1, out)
+        self.assertGreater(float(h.kv(out)["TRANSPARENT_PERCENT"]), 0)
+
 
 if __name__ == "__main__":
     unittest.main()
