@@ -30,7 +30,7 @@ class FaceParts32Test(unittest.TestCase):
 
     def test_native_frame_and_facings(self) -> None:
         data = self.library
-        self.assertEqual(set(data), {"px", "frame", "sources", "facings"})
+        self.assertEqual(set(data), {"px", "frame", "sources", "facings", "spacing"})
         self.assertEqual(data["px"], 32)
         self.assertEqual(data["frame"], [32, 32])
         self.assertEqual(set(data["facings"]), {"front", "left", "right"})

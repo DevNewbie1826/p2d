@@ -1,5 +1,16 @@
 {
   "px": 32,
+  "spacing": {
+    "front": {"ratio": 0.3846153846, "min": 1, "max": 7},
+    "side": {"ratio": 0.2, "min": 0, "max": 4},
+    "measured": {
+      "front_n": 28, "side_n": 23,
+      "front_face_w": [9, 11, 19], "inner_gap": [1, 5, 7],
+      "outer_span": [3, 9, 9], "front_margin": [0, 1, 5],
+      "side_face_w": [4, 9, 11], "side_margin": [0, 2, 4],
+      "method": "Original source boxes; skin ramp at iris row, bridged across recorded eye/sclera pixels. Min/median/max; ratio = median(gap or leading iris margin / face_w). Unresolved/occluded or non-warm samples excluded from spacing fit only. Fixtures match the original PIPOYA/knight PNGs."
+    }
+  },
   "frame": [32, 32],
   "sources": [
     {"id": "original-001", "path": "tests/fixtures/face32/Female 01-1.png", "note": "Original PNG, byte-for-byte copy of /tmp/p2d-study/chars32/pipoya/PIPOYA FREE RPG Character Sprites 32x32/Female/Female 01-1.png; native 32x32 cells. sha256=35b2c3598d65e16c4835f45fca3ff12f0865d1393202a8469004924bdc4b758a. PIPOYA colour variants collapse to role geometry. MinZinn excluded: native 128x128 cells, not reversible 4x enlargement; boss 288x384 excluded. Eye grids are measured without resampling; opaque colour ramps are collapsed to semantic roles. Mouths are unscaled source masks translated to ey+3..5 on the target chin. Front cx=16 except Knight cx=19; side cx=16. Left/right names mean image coordinates."},

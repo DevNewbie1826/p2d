@@ -1,5 +1,16 @@
 {
   "px": 48,
+  "spacing": {
+    "front": {"ratio": 0.4358974359, "min": 1, "max": 14},
+    "side": {"ratio": 0.3809523810, "min": 0, "max": 6},
+    "measured": {
+      "front_n": 6, "side_n": 8,
+      "front_face_w": [13, 17, 24], "inner_gap": [7, 7, 7],
+      "outer_span": [13, 13, 13], "front_margin": [0, 1.5, 5],
+      "side_face_w": [6, 13, 14], "side_margin": [0, 4, 6],
+      "method": "Original Raven source boxes; skin ramp at iris row, bridged across recorded eye/sclera pixels. Min/median/max; ratio = median(gap or leading iris margin / face_w). Tinted/neutral or occluded samples excluded from spacing fit only. Fixtures match the original uploads. Front cap extends to twice measured max gap for wider target faces."
+    }
+  },
   "frame": [
     48,
     48
