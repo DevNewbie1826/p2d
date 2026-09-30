@@ -1,6 +1,6 @@
 # Animations and effects
 
-Action loops for a character that already has an approved master or walking sheet: idle, attack, cast, hurt, jump, death, plus separate effect sheets (slash arcs, sparks, spells, projectiles).
+Action loops for a character that already has an approved master or walking sheet (if none exists yet, make the master as in the character reference and get the user's approval before generating any action or FX): idle, attack, cast, hurt, jump, death, plus separate effect sheets (slash arcs, sparks, spells, projectiles).
 
 ## Grid per action
 
