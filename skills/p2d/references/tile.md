@@ -45,7 +45,7 @@ p2d.py preview DIR/assets/<name>/<name>@<P>.png --repeat 3 --out DIR/previews/<n
 ## Fixing a seam (offset and repaint)
 
 1. `p2d.py offset RAW --axis xy --out WORK/<name>-offset.png --mask WORK/<name>-mask.png` moves the borders into the centre and writes a repaint mask.
-2. Reserve a new attempt, then call the image tool with `reference_image_paths=[offset image]`, `mask_image_path=mask`, prompt: `Repaint only the masked cross so the <material> continues seamlessly; keep every other pixel, the palette and the pixel size unchanged.`
+2. Reserve a new attempt, then run `gen_image.mjs --ref <offset image> --mask <mask>` with the prompt `Repaint only the masked cross so the <material> continues seamlessly; keep every other pixel, the palette and the pixel size unchanged.`
 3. `p2d.py offset EDITED --axis xy --inverse --out RAW_FIXED`, then pixelize and check again.
 
 ## Deliverables

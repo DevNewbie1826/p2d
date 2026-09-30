@@ -20,7 +20,7 @@ p2d.py pack attempt DIR --name <name> --kind <kind> --px <small> --reference <ac
 Image 1 is the approved <W>x<H> version of this <asset>. Redraw the same <asset> as a <w>x<h> pixel-art <kind> for the same game: same design, materials, colors and lighting, simplified for the smaller grid (fewer and bigger details, clear silhouette), each pixel a crisp square block. <background rule of the kind>.
 ```
 
-Pass the accepted larger raw in `reference_image_paths`. Pixelize with the smaller `--size`, check, accept.
+Pass the accepted larger raw with `--ref`. Pixelize with the smaller `--size`, check, accept.
 
 ## Variants
 

@@ -24,7 +24,7 @@
 
 필요한 것: OmO, Python 3.9+, Pillow, numpy (`python3 -m pip install --user pillow numpy`).
 
-구독 생성 경로는 설치된 `codex-image` 스킬의 `scripts/gen.mjs`를 사용합니다(Bun 또는 Node 18+, 유효한 ChatGPT/Codex 로그인 필요). 이 별도 스킬과 인증 코드는 p2d에 포함하지 않습니다. 실제 네이티브 `image_gen.imagegen`이 노출된 환경에서는 직접 호출할 수도 있습니다. 로컬 `generate_image` API 게이트웨이를 구독 경로와 혼동하지 않습니다.
+이미지 생성은 p2d에 포함된 `skills/p2d/scripts/gen_image.mjs`(codex-image 런타임 번들, 의존성 없음)로 사용자의 ChatGPT 구독을 사용합니다(Bun 또는 Node 18+, `~/.omo/auth.json` 또는 `~/.codex/auth.json`의 ChatGPT 로그인 필요). 다른 스킬 설치는 필요 없습니다. 실제 네이티브 `image_gen.imagegen`이 노출된 환경에서는 직접 호출할 수도 있습니다. 로컬 `generate_image` API 게이트웨이를 구독 경로와 혼동하지 않습니다.
 
 생성을 서브에 위임할 때는 생성·보정·검증까지 그 작업에서 수행하고, 메인 채팅에는 후처리된 결과만 표시합니다. 네이티브 도구 이름을 eval의 로컬 함수로 호출하지 않습니다.
 

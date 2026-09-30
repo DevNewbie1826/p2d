@@ -33,6 +33,6 @@ p2d.py check DIR/assets/<name>/<name>@<P>.png --kind wall --size WxH --pack DIR
 p2d.py preview DIR/assets/<name>/<name>@<P>.png --repeat 3 --out DIR/previews/<name>@<P>-repeat.png
 ```
 
-`check --kind wall` measures the x seam by default; pass `--axis xy` for stacking walls. Seam repair is the offset-and-repaint method with `--axis x` (or `xy`): `p2d.py offset RAW --axis x --out OFFSET --mask MASK`, repaint the masked band with the image tool (reserve an attempt first), `p2d.py offset EDITED --axis x --inverse --out FIXED`.
+`check --kind wall` measures the x seam by default; pass `--axis xy` for stacking walls. Seam repair is the offset-and-repaint method with `--axis x` (or `xy`): `p2d.py offset RAW --axis x --out OFFSET --mask MASK`, repaint the masked band with `gen_image.mjs --ref OFFSET --mask MASK` (reserve an attempt first), `p2d.py offset EDITED --axis x --inverse --out FIXED`.
 
 Record `--axis x` (or `xy`) on `pack attempt`.
