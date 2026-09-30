@@ -127,7 +127,7 @@ class DuplicatedEdgeTest(GuardTest):
         return h.run_cli("check", src, "--kind", kind, "--size", "%dx%d" % (width, height),
                          "--axis", axis, "--allow-noise")
 
-    def test_copied_edges_fail_for_each_surface_and_axis(self):
+    def test_copied_edges_ask_for_review_for_each_surface_and_axis(self):
         native = np.repeat(np.repeat(h.native_art(8, 8, h.DUNGEON, seed=4), 2, 0), 2, 1)
         for kind in ("tile", "wall", "trim"):
             for axis in ("x", "y"):
@@ -138,8 +138,14 @@ class DuplicatedEdgeTest(GuardTest):
                     else:
                         img[-1] = img[0]
                     code, out, err = self.check(img, kind, axis)
-                    self.assertEqual(code, 1, out + err)
-                    self.assertIn("FAIL_REASON: SEAM_%s_DUPLICATED_EDGE" % axis.upper(), out)
+                    self.assertIn("SEAM_%s_EDGE_REVIEW" % axis.upper(), out)
+                    self.assertNotIn("DUPLICATED_EDGE", out)
+
+    def test_natural_abba_period_is_not_failed(self):
+        col = np.array([(40, 40, 40, 255), (90, 90, 90, 255), (90, 90, 90, 255), (40, 40, 40, 255)], np.uint8)
+        img = np.tile(col[None, :, :], (16, 4, 1))
+        code, out, err = self.check(img, "tile", "x")
+        self.assertEqual(code, 0, out + err)
 
     def test_flat_stripes_and_native_periodic_edges_pass(self):
         flat = np.full((16, 16, 4), (40, 50, 60, 255), dtype=np.uint8)

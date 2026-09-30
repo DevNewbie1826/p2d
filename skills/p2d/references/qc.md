@@ -30,15 +30,15 @@ Compare ALL kept candidates of all attempts (read their `@8x` previews side by s
 
 ## Attempt limit reached
 
-`pack attempt` exit 2 means three attempts are used. Do not generate again and do not reset pack.json. Accept the best kept candidate if it passes `check`; otherwise tell the user which check fails, show the best candidate, and record it as a manual follow-up (`pack set DIR --notes "manual: <asset> <reason>"`).
+`pack attempt` exit 2 means three attempts are used. Do not generate again and do not reset pack.json. A numeric PASS is necessary, not sufficient: never accept a candidate that fails the visual review (features, eyes, repeat, sizes) because attempts ran out. If no candidate passes both, tell the user which check fails, show the best candidate, and record it as a manual follow-up (`pack set DIR --notes "manual: <asset> <reason>"`).
 
 Never loosen `--seam-max`, the frame gates, or the color caps to turn a FAIL into a PASS without telling the user why.
 
 ## Pixel guard diagnostics
 
 - `requested size halves the generated grid`: pixelize at the block size and use `split`.
-- `SEAM_X_DUPLICATED_EDGE` / `SEAM_Y_DUPLICATED_EDGE`: an edge was copied onto the opposite edge. Repaint continuity (`offset` + masked edit) instead.
+- `SEAM_X_EDGE_REVIEW` / `SEAM_Y_EDGE_REVIEW`: opposite edges are identical. A natural period can do this, a copied edge also does: open the 4x4 repeat; never copy an edge to fix a seam, repaint continuity (`offset` + masked edit).
 - `NOISE_HINT`: the singleton rate `--despeckle auto` would reach; re-run QC after it.
 - `COLORS_BELOW_BUDGET`: the colour cap is below the tile budget (16: 3, 32: 4, 48: 4); review lost features.
 - `touch` refuses more than max(8, 2% of opaque pixels) changed pixels (exit 2). A repair that needs more is a redraw, not a touch; `--force-many` only when the user asked for a hand edit.
-- Character frames with 31-52% singletons (the measured RM2000 range) no longer ask for noise review.
+- 24x32 (16px) character frames with 31-52% singletons (the measured RM2000 range) do not ask for noise review; other frame sizes keep the review.

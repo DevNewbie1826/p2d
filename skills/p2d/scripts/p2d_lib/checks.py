@@ -229,7 +229,9 @@ def cmd_check(args: argparse.Namespace) -> int:
                 # exists: flat fields and stripes parallel to this axis are valid.
                 inner_diff = (np.any(strips[0] != strips[1]) or np.any(strips[-1] != strips[-2]))
                 if inner_diff:
-                    reasons.append("SEAM_%s_DUPLICATED_EDGE" % name.upper())
+                    # Identical opposite edges may be a copied edge or a natural period;
+                    # it cannot be told apart from pixels alone, so ask for review.
+                    emit("SEAM_%s_EDGE_REVIEW" % name.upper(), "opposite edges identical: check the 4x4 repeat for a copied edge")
         if ratio > args.seam_max:
             reasons.append("SEAM_%s %.4f too high" % (name.upper(), ratio))
     if args.max_singletons is not None and singleton_percent > args.max_singletons:
@@ -267,7 +269,7 @@ def cmd_check(args: argparse.Namespace) -> int:
     limits = noise_limits(args.kind, width, height)
     if limits is not None:
         flagged = singleton_percent > limits[0] or mean_cluster < limits[1]
-        if args.kind == "frame" and 31.0 <= singleton_percent <= 52.0:
+        if args.kind == "frame" and (width, height) == (24, 32) and 31.0 <= singleton_percent <= 52.0:
             flagged = False
         emit("NOISE_REVIEW", "yes (singleton > %.0f%% or cluster < %.2f)" % limits if flagged else "no")
         if flagged and args.kind in SURFACE and not args.allow_noise:

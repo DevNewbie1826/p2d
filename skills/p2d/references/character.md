@@ -70,7 +70,7 @@ Use the accepted native PNG as MASTER, not the high-resolution raw. Read the gui
 ```
 The displayed guide locks character identity, exact cell centers, body scale and foot baselines. Change only poses and facing, never zoom or reposition a character to fill a cell. Preserve the flat pixel style without beveled or embossed blocks.
 Exactly 12 equal cells in 4 rows and 3 columns, no lines, borders or gaps drawn between cells.
-<16: "Row 1 up/back, row 2 right, row 3 down/front, row 4 left"; 32/48: "Row 1 down/front, row 2 left, row 3 right, row 4 up/back">.
+For every px generate: "Row 1 down/front, row 2 left, row 3 right, row 4 up/back". `charset` alone converts these rows to the engine order (RPG Maker 2000 stores Up, Right, Down, Left); never reorder rows in the prompt.
 Column 1: left foot forward. Column 2: standing still. Column 3: right foot forward.
 <16: "Preserve native 24x32 scale and identity, about 19-28 colors per pose, stable foot baseline with at most 1px foot-tip variation; A/B head and eyes 1px below standing. Alternate legs and opposing arms, redraw sleeves/hem/hair/cloak, never translate the whole sprite sideways. Front has two 1x2 dark/light irises with pale/white sclera and visible skin; side has one readable eye and a narrower face/body with overlapping limbs; back has no eyes. Keep material-colored 1px contours and connected shading bands. Wide hats may stay wide (up to 22px); leave key around the contained subject, no fixed 70% width cap"; 32/48: "Same size in every cell, feet on the same line, the whole body inside the central 70% of each cell">. Nothing crosses a cell edge.
 RPG Maker style JRPG overworld sprite, chibi proportions, each pixel a crisp square block, <pack line>.
@@ -115,7 +115,7 @@ p2d.py charset --format mv --frames DIR/work/<char>/walk@48 --pack DIR --out DIR
 p2d.py gif DIR/work/<char>/walk@P/r<R>c0.png DIR/work/<char>/walk@P/r<R>c1.png DIR/work/<char>/walk@P/r<R>c2.png --sequence 1,0,1,2 --out DIR/previews/<char>-walk-down@P.gif
 ```
 
-For the down-walk GIF, use `R=2` at 16px and `R=0` at 32/48px.
+For the down-walk GIF, use `R=0` at every px (frames are always generated Down, Left, Right, Up).
 
 rm2k sheets hold 8 characters: give each character of the pack its own `--slot` in the same file. `--mirror-right` builds the right row from the left row; use it only for left-right symmetric designs (nothing held in one hand). `pack accept DIR --name <char>-walk --px P --raw RAW --file <sheet>`.
 
