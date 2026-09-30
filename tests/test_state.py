@@ -188,7 +188,7 @@ class PackStateTest(unittest.TestCase):
         code, _, err = h.run_cli("pack", "attempt", self.directory, "--name", "crate",
                                 "--kind", "prop", "--px", "16")
         self.assertEqual(code, 2, err)
-        out = self.reserve("--max-calls", "4")
+        out = self.reserve("--max-calls", "4", "--user-consent", "yes, one more")
         self.assertEqual(h.kv(out)["ATTEMPT"], "4")
         self.assertEqual(len(self.entry(self.disk())["attempts"]), 4)
 

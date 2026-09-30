@@ -20,6 +20,7 @@ from .imageio import P2DError, emit, emit_result, parse_size, read_json, write_j
 def cmd_gen(args: argparse.Namespace) -> int:
     if args.max_calls <= 0:
         raise P2DError("--max-calls must be positive")
+    pack.require_consent(args)
     if args.timeout <= 0:
         raise P2DError("--timeout must be positive")
     directory = Path(args.dir).absolute()
@@ -53,6 +54,8 @@ def cmd_gen(args: argparse.Namespace) -> int:
                    if key not in ("attempt", "output_prefix", "status", "runtime_calls", "raw_sha256")}
         attempt.update(attempt=number, output_prefix=pack.attempt_prefix(
             str(directory), args.name, args.px, number), status="reserved", runtime_calls=0)
+        if (args.user_consent or "").strip():
+            attempt["user_consent"] = args.user_consent.strip()
         attempts.append(attempt)
         pack.save_pack(str(directory), data)
         emit("ATTEMPT", number)
@@ -146,5 +149,6 @@ def configure(name: str, parser: argparse.ArgumentParser) -> Callable[[argparse.
     parser.add_argument("--runner", help="override runtime command (e.g. a test stub)")
     parser.add_argument("--timeout", type=float, default=600)
     parser.add_argument("--max-calls", type=int, default=pack.MAX_ATTEMPTS,
-                        help="call cap per asset/px (default 3); raising it requires explicit user consent")
+                        help="call cap per asset/px (default 3); above 3 needs --user-consent")
+    parser.add_argument("--user-consent", help="the user's own words allowing more calls (ask first)")
     return cmd_gen

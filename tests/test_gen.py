@@ -170,7 +170,7 @@ class GenTest(unittest.TestCase):
         for _ in range(3):
             self.assertEqual(self.run_gen()[0], 1)
         self.stub.write_text(STUB)
-        code, out, err = self.run_gen("--max-calls", "4")
+        code, out, err = self.run_gen("--max-calls", "4", "--user-consent", "yes, one more")
         self.assertEqual(code, 0, out + err)
         self.assertTrue((self.directory / "raw" / "crate@16_a4.png").exists())
         attempts = json.loads((self.directory / "pack.json").read_text())[
