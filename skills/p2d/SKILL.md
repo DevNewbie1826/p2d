@@ -15,6 +15,7 @@ The image model draws; the scripts turn drawings into exact pixel grids and prov
 4. Never delete candidates. Raws stay in `raw/`; rejected work stays on disk.
 5. One pack, one style: every asset in a pack uses the pack palette, light direction, outline rule, and view in pack.json.
 6. Show native-size results and their integer nearest-neighbour `@8x` previews next to references. Reject beveled/embossed pixel tiles, per-pixel highlights, halos, blurred boundaries and within-cell gradients. A numeric PASS does not establish visual quality; distinguish viewer interpolation from defects in the actual PNG.
+7. When generation is delegated, the image-capable GPT child owns generation, correction and visual QC. Return only processed deliverables and their paths to the main chat; keep raw candidates and guides in the child's workspace. If the user requests subagent-only generation, do not silently fall back to parent generation. Verify direct native access before promising parallel image work. Use disjoint asset outputs and serialize writes to each shared pack.json.
 
 ## 1. Pack and px - before any generation
 
@@ -42,14 +43,15 @@ Split the request into assets: name (slug), kind, px list, variants, references.
 
 1. `pack attempt DIR --name N --kind K --px P --prompt "<prompt>" [--reference FILE] [--variant-of BASE]` prints `OUTPUT`.
 2. `size WxH` for the logical canvas the reference file names; use its `GEN_SIZE`.
-3. Follow `gpt-image-gen` and prefer the native image tool actually available in the session. Native tools may save automatically under `generated-images/`: preserve that original and copy the returned file to the reserved `OUTPUT`; do not assume API-only arguments exist. Use `size`, `output_path`, `n` and `reference_image_paths` only when supported by the client `generate_image` surface. Display local reference images before native reference/edit calls. Props, characters and effects use a flat `#FF00FF` background. If generation fails, report the actual tool error; do not infer that a subscription needs an API key, silently change providers, or substitute code-drawn art.
+3. Read `gpt-image-gen`. On the GPT subscription route, call the exposed native `image_gen.imagegen` DIRECTLY, OUTSIDE eval. Never call `tool.image_generation(...)` in eval: native server tools are not local eval functions. Absence from `tool_search` or `tool_schema` does not prove the native tool is unavailable. `generate_image` is a separate API-gateway tool, not a subscription fallback. Apply this same instruction when delegating to deep subagents.
+   Display local references before native edits. Native tools may save under `generated-images/`: verify the returned file exists, open it, preserve the original, then copy it to reserved `OUTPUT`. Do not assume native tools accept API-only size/output/reference parameters. Props, characters and effects use flat `#FF00FF`. If the actual native tool is unavailable or fails, report the precise limitation without guessed function calls, silent provider changes or code-drawn substitutes.
 4. Several px values: generate the LARGEST first. After it is accepted, each smaller px is its own redraw with the accepted larger raw as reference and `--reference` on the reservation.
 
 Every prompt = the kind template from its reference + this pack line: `Flat raster pixel art for a 2D RPG Maker-style game, <view>, light from the <light> on the depicted subject only, <outline>, limited palette of about <asset_colors> colors<, palette hexes if the pack has them>. Pixels are flat single-color samples, not physical blocks: no bevel, embossing, raised tiles, per-pixel lighting, glossy rims, halos, within-pixel gradients, antialiasing or blur. Hard grid-aligned color changes, no text, no watermark.`
 
 ## 4. Pixelize, check, accept
 
-1. `raw-check RAW --bg key` for key backgrounds (`--bg none` for opaque surfaces).
+1. Inspect the actual file, not only the requested background. For props/characters/effects, run `inspect RAW`: genuine alpha transparency uses `raw-check RAW --bg alpha` and `--bg alpha` consistently in `pixelize`/`frames`; an opaque flat key background uses `--bg key`. Do not regenerate a valid transparent PNG merely because magenta was requested. Painted checkerboards are not transparency. Opaque tile/wall/trim surfaces use `--bg none`.
 2. `pixelize RAW --kind K --size WxH --pack DIR --out DIR/assets/<name>/<name>@<px>.png --scale 8` (the kind reference gives extra flags).
 3. `check FILE --kind K --size WxH --pack DIR` must print `RESULT: PASS`.
 4. Read the native PNG and `@8x` PNG beside the references and accepted assets: silhouette, readability at 1x, style match, flat color cells and hard edges. Do not judge a smoothly zoomed screenshot as the source PNG. If bevel-like shading remains across logical pixels, regenerate or repair the affected color clusters; palette quantization alone cannot remove that design.

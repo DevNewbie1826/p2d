@@ -16,6 +16,8 @@ One action and one facing per raw generation. Multi-row grids only; a raw single
 
 Frame size = the character frame for the px (24x32, 32x32, 48x48). A weapon or pose that needs room gets a wider frame (e.g. 48x32 at px 16) while the body keeps its walking height.
 
+Compact-pose wording below is a containment aid, not an extra artistic requirement. Judge the requested action, identity, anatomical scale and actual clipping. A readable thrust that fits the requested frame and passes QC is not a failure just because the default prompt suggested bent elbows. Preserve any motion the user specifically requested.
+
 Default facing: toward the viewer (down) on maps; left for side-view battlers. Name each sheet `<char>-<action>-<facing>`.
 
 When four directions are requested, deliver down, left, right and up as four separately generated action sheets. Do not silently substitute one facing or put unrelated directions into an attack grid. Use the matching standing frame for each direction as its identity and geometry reference.
