@@ -3,7 +3,10 @@ from __future__ import annotations
 import argparse
 import copy
 import hashlib
+import io
 import os
+import re
+from contextlib import redirect_stdout
 from typing import Any, Callable, Dict, List, Optional, Tuple
 
 from . import color
@@ -69,9 +72,16 @@ def _pack_paths(data: Dict[str, Any], convert: Callable[[str], str]) -> None:
     """Convert only path-bearing fields, leaving prompts and metadata intact."""
     for asset in data.get("assets", {}).values():
         for entry in asset.get("sizes", {}).values():
-            records = [(attempt, ("output_prefix", "reference")) for attempt in entry.get("attempts", [])]
+            records: List[Tuple[Dict[str, Any], Tuple[str, ...]]] = [
+                (attempt, ("output_prefix", "reference")) for attempt in entry.get("attempts", [])
+            ]
+            accepted_records = list(entry.get("history", []))
             if entry.get("accepted"):
-                records.append((entry["accepted"], ("file", "raw")))
+                accepted_records.append(entry["accepted"])
+            for accepted in accepted_records:
+                records.append((accepted, ("file", "raw")))
+                if accepted.get("face_report"):
+                    records.append((accepted["face_report"], ("path",)))
             for record, fields in records:
                 for field in fields:
                     if record.get(field):
@@ -274,24 +284,82 @@ def candidates(entry: Dict[str, Any]) -> List[str]:
 
 
 def _accept(args: argparse.Namespace, data: Dict[str, Any]) -> int:
+    from . import checks, face
+
     px = validate_px([args.px])[0]
     entry = _asset_size_entry(data, args.name, px)
+    if entry.get("accepted") and not args.replace:
+        raise P2DError("%s@%d is already accepted (use --replace to overwrite)" % (args.name, px))
     raw = os.path.realpath(args.raw)
     chosen = next((a for a in entry["attempts"] if raw in [os.path.realpath(p) for p in candidates({"attempts": [a]})]), None)
     if chosen is None:
         raise P2DError("%s is not a candidate of a reserved attempt for %s@%d" % (args.raw, args.name, px))
     if not os.path.exists(args.file):
         raise P2DError("processed file not found: %s" % args.file)
-    if (data.get("assets") or {}).get(args.name, {}).get("kind") == "character":
+    asset = data["assets"][args.name]
+    kind = asset["kind"]
+    spec = kind_spec(kind, px)
+    size = chosen.get("size", spec["size"])
+    if kind == "character":
         w, height = parse_size(kind_spec("character", px)["size"])
         allowed = tuple("%dx%d" % (w * x, height * y) for x, y in ((1, 1), (3, 4), (12, 8)))
         rgba = load_rgba(args.file)
         size = "%dx%d" % (rgba.shape[1], rgba.shape[0])
         if size not in allowed:
             raise P2DError("character at %dpx must be %s (frame, block or sheet); got %s" % (px, " or ".join(allowed), size))
+    parser = argparse.ArgumentParser()
+    checks.configure("check", parser)
+    check_args = parser.parse_args([args.file, "--kind", spec["check_kind"], "--size", size,
+                                   "--pack", args.dir, "--axis", chosen.get("axis", asset.get("axis") or spec["axis"])])
+    output = io.StringIO()
+    with redirect_stdout(output):
+        code = checks.cmd_check(check_args)
+    fields = [line.split(": ", 1) for line in output.getvalue().splitlines() if ": " in line]
+    if code:
+        raise P2DError("check fails: %s" % "; ".join(value for key, value in fields if key == "FAIL_REASON"))
+    metric_names = {"SIZE", "COLORS", "OUT_OF_PALETTE", "ALPHA_BINARY", "KEY_RESIDUE",
+                    "TRANSPARENT_PERCENT", "SEAM_X", "SEAM_Y", "EDGE_TOUCH",
+                    "SINGLETON_PERCENT", "MEAN_CLUSTER", "NOISE_REVIEW"}
+    accepted = {"file": os.path.abspath(args.file), "raw": raw, "sha256": _sha256(args.file),
+                "qc": {"result": "PASS", "metrics": {key: value for key, value in fields if key in metric_names}}}
+    if args.no_face is not None:
+        if not args.no_face.strip():
+            raise P2DError("--no-face needs a nonempty reason")
+        accepted["no_face"] = args.no_face
+    elif kind in ("character", "animation") or args.face_report:
+        report_path = args.face_report
+        if report_path:
+            try:
+                with open(report_path, encoding="utf-8") as stream:
+                    report = stream.read()
+            except (OSError, UnicodeError) as error:
+                raise P2DError("face report cannot be read: %s" % error) from error
+        else:
+            output = io.StringIO()
+            with redirect_stdout(output):
+                code = face.cmd_face(argparse.Namespace(image=args.file, auto=True, eyes=None, skin=None,
+                                                       key=None, scale=8, out=None))
+            report = output.getvalue()
+            if code:
+                raise P2DError("face check fails (run p2d.py face ... > report.txt or use --no-face REASON): %s"
+                               % report.strip())
+            report_path = os.path.join(args.dir, "work", "%s@%d-face-%s.txt" % (args.name, px, accepted["sha256"]))
+        lines = report.splitlines()
+        crops = [line[len("CROP: "):].strip() for line in lines if line.startswith("CROP: ")]
+        results = [line for line in lines if line.startswith("RESULT:")]
+        stem = os.path.splitext(os.path.abspath(args.file))[0]
+        if results != ["RESULT: PASS"] or len(crops) != 1 or not re.fullmatch(
+                re.escape(stem) + r"-face@[1-9][0-9]*x\.png", os.path.abspath(crops[0])):
+            raise P2DError("face report must contain RESULT: PASS and the default CROP for this exact file")
+        if not args.face_report:
+            with open(report_path, "w", encoding="utf-8") as stream:
+                stream.write(report)
+        accepted["face_report"] = {"path": os.path.abspath(report_path), "sha256": _sha256(report_path)}
     chosen["status"] = "accepted"
     chosen["raw_sha256"] = _sha256(raw)
-    entry["accepted"] = {"file": os.path.abspath(args.file), "raw": raw, "sha256": _sha256(args.file)}
+    if entry.get("accepted"):
+        entry.setdefault("history", []).append(copy.deepcopy(entry["accepted"]))
+    entry["accepted"] = accepted
     save_pack(args.dir, data)
     emit("ACCEPTED", "%s@%d -> %s" % (args.name, px, args.file))
     emit("CANDIDATES_KEPT", len(candidates(entry)))
@@ -419,4 +487,8 @@ def configure(name: str, parser: argparse.ArgumentParser) -> Callable[[argparse.
     acc.add_argument("--px", type=int, required=True)
     acc.add_argument("--raw", required=True, help="chosen generated file (must come from a reserved attempt)")
     acc.add_argument("--file", required=True)
+    face_options = acc.add_mutually_exclusive_group()
+    face_options.add_argument("--face-report", help="text output of face for this file, using its default crop path")
+    face_options.add_argument("--no-face", metavar="REASON", help="record why a back view or visored helmet needs no face check")
+    acc.add_argument("--replace", action="store_true", help="replace an accepted entry, keeping the previous record in history")
     return cmd_pack

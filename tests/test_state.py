@@ -64,7 +64,10 @@ class PackStateTest(unittest.TestCase):
 
     def image(self, path, seed=1):
         os.makedirs(os.path.dirname(path), exist_ok=True)
-        return h.save(h.native_art(16, 16, h.DUNGEON, seed=seed), path)
+        rgba = h.native_art(16, 16, h.DUNGEON, seed=seed)
+        rgba[[0, -1], :, 3] = 0
+        rgba[:, [0, -1], 3] = 0
+        return h.save(rgba, path)
 
     def accept(self):
         raw = self.image(h.kv(self.reserve())["OUTPUT"])

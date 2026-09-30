@@ -190,7 +190,10 @@ class CliTest(unittest.TestCase):
         self.assertEqual(code, 2)
         self.assertIn("attempt limit reached (3)", err)
         stray = h.save(h.native_art(4, 4, h.DUNGEON, seed=9), os.path.join(d, "stray.png"))
-        final = h.save(h.native_art(16, 16, h.DUNGEON, seed=1), os.path.join(d, "crate.png"))
+        rgba = h.native_art(16, 16, h.DUNGEON, seed=1)
+        rgba[[0, -1], :, 3] = 0
+        rgba[:, [0, -1], 3] = 0
+        final = h.save(rgba, os.path.join(d, "crate.png"))
         code, _, err = h.run_cli("pack", "accept", pack, "--name", "crate", "--px", "16", "--raw", stray, "--file", final)
         self.assertEqual(code, 2)
         code, out, err = h.run_cli("pack", "accept", pack, "--name", "crate", "--px", "16", "--raw", outputs[1], "--file", final)
@@ -209,8 +212,12 @@ class CliTest(unittest.TestCase):
         code, _, err = h.run_cli("pack", "accept", pack, "--name", "knight-master", "--px", "16", "--raw", raw, "--file", square)
         self.assertEqual(code, 2)
         self.assertIn("24x32", err)
-        frame = h.save(h.native_art(24, 32, h.DUNGEON, seed=1), os.path.join(d, "fr.png"))
-        code, _, err = h.run_cli("pack", "accept", pack, "--name", "knight-master", "--px", "16", "--raw", raw, "--file", frame)
+        rgba = h.native_art(24, 32, h.DUNGEON, seed=1)
+        rgba[[0, -1], :, 3] = 0
+        rgba[:, [0, -1], 3] = 0
+        frame = h.save(rgba, os.path.join(d, "fr.png"))
+        code, _, err = h.run_cli("pack", "accept", pack, "--name", "knight-master", "--px", "16",
+                                "--raw", raw, "--file", frame, "--no-face", "back-view size fixture")
         self.assertEqual(code, 0, err)
 
     def test_inspect_reports_pitch_and_px(self):
