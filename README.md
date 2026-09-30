@@ -2,7 +2,7 @@
 
 프롬프트(구어체 설명)나 레퍼런스 이미지로 **2D 픽셀아트 게임 에셋**을 만드는 OmO 스킬입니다.
 
-- 그림은 OmO의 GPT 이미지 도구(`generate_image` / `image_generation`)가 그리고,
+- 그림은 ChatGPT 구독의 GPT 이미지 생성으로 만들고,
 - 스크립트가 그 그림을 **정확한 픽셀 격자**로 바꾸고(격자 추정, 셀별 대표색, 팩 공유 팔레트, 투명도 0/255), 검사합니다.
 
 ## 만들 수 있는 것
@@ -23,6 +23,10 @@
 ## 설치
 
 필요한 것: OmO, Python 3.9+, Pillow, numpy (`python3 -m pip install --user pillow numpy`).
+
+구독 생성 경로는 설치된 `codex-image` 스킬의 `scripts/gen.mjs`를 사용합니다(Bun 또는 Node 18+, 유효한 ChatGPT/Codex 로그인 필요). 이 별도 스킬과 인증 코드는 p2d에 포함하지 않습니다. 실제 네이티브 `image_gen.imagegen`이 노출된 환경에서는 직접 호출할 수도 있습니다. 로컬 `generate_image` API 게이트웨이를 구독 경로와 혼동하지 않습니다.
+
+생성을 서브에 위임할 때는 생성·보정·검증까지 그 작업에서 수행하고, 메인 채팅에는 후처리된 결과만 표시합니다. 네이티브 도구 이름을 eval의 로컬 함수로 호출하지 않습니다.
 
 방법 1 - 패키지로 설치 (`~/.omo/agent/settings.json`의 `packages`에 추가):
 
