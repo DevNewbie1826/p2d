@@ -121,10 +121,10 @@ Per frame in raw space: subject bbox; `scale_cv` = std/mean of bbox height, `anc
 | Q1 | `node scripts/verify.mjs` (senpi DefaultResourceLoader on repo; plus default loader with cwd=/tmp after symlink `~/.agents/skills/p2d`) | prints `PASS` lines: skill `p2d` found at `skills/p2d/SKILL.md`, diagnostics `[]`, found globally |
 | Q2 | same script, disclosure audit | SKILL.md <= 150 lines, description <= 1024 chars, every `references/*.md` linked from SKILL.md, no reference links another reference, every script command in docs exists in `p2d.py --help` |
 | Q3 | `python3 -m unittest discover -s tests -v` | `OK`, 0 failures/errors |
-| Q4 | E2E pack: fresh agent loads only p2d, request "어두운 던전 재질 팩 만들어줘. 16이랑 32로. 조약돌 바닥, 석벽, 나무 상자, 나무 통, 가로 트림" with output in a temp project | each asset has `@16` and `@32` PNG of exact size; `check` RESULT PASS for all; `preview.png` exists; visual verdict (read of preview) = crisp grid, cohesive palette, reads like the reference |
+| Q4 | E2E pack: fresh agent loads only p2d, request "어두운 던전 재질 팩 만들어줘. 16이랑 32로. 조약돌 바닥(어두운 변형 하나 포함), 석벽, 나무 상자, 나무 통, 가로 트림" with output in a temp project | each asset has 16 and 32 PNG of exact size; `check` RESULT PASS for all (wall axis x); pack.json shows per-size raw + reference (distinct raws), variant entry with `variant_of`, all candidates kept; `preview.png` exists; visual verdict (read of preview) = crisp grid, cohesive palette, reads like the reference |
 | Q5 | E2E px reuse: same pack, "나무 문도 추가" (no px) | produced at 16 and 32 without asking |
-| Q6 | E2E px missing: new pack, "돌 바닥 타일 만들어줘" | agent asks px (16/32/48 multi-select) before generating (subagent reports the question it would ask) |
-| Q7 | E2E character: "은발 기사 캐릭터, 16px, 걷기" | master approved step shown; `$`-less rm2k `…charset.png` 72x128, mode P, 256-entry palette, index 0 = key; frames RESULT PASS; walk GIF exists; visual verdict |
+| Q6 | E2E px missing: new pack, "돌 바닥 타일 만들어줘" | child's first turn ends with the px question (16/32/48, multiple allowed) and its transcript has zero `generate_image` calls in that turn; after the lead answers "16" via task_send, generation calls appear, the tile is made at 16 only and pack.json px = [16] |
+| Q7 | E2E character: "은발 기사 캐릭터, 16px, 걷기" | child's transcript shows the master-approval request ending a turn with zero direction/walk `generate_image` calls before the lead's approval message; after approval: rm2k `…charset.png` 288x256, mode P, 256-entry palette, index 0 = key, knight in slot 0 with rows Up/Right/Down/Left; frames RESULT PASS; walk GIF exists; visual verdict |
 | Q8 | E2E animation: "그 기사 32px 공격 모션" | 2x2 grid frames at 32x32 (VX Ace convention), frames.json RESULT PASS (loose where appropriate), GIF; FX not baked into body |
 
 ## Test decision
@@ -141,13 +141,29 @@ One task (one worktree `p2d-skill`, one branch, one PR/merge).
 | N2 core | p2d_lib/color.py, pixelize.py, pack.py (+ `doctor`, `size`, `inspect`, `raw-check`, `palette`, `pack`, `pixelize` wiring), tests/test_core.py | N1 |
 | N3 seams+checks | p2d_lib/seam.py, checks.py (`offset`, `check`), tests/test_checks.py | N2 |
 | N4 characters | p2d_lib/frames.py, charset.py (`frames`, `charset`, `gif`), tests/test_characters.py | N2 |
-| N5 presentation | p2d_lib/preview.py (`preview`, `atlas`), palettes/*.hex, tests/test_preview.py | N2 |
+| N5 presentation | p2d_lib/preview.py (`preview`, `atlas`), p2d_lib/edit.py (`touch`), palettes/*.hex, tests/test_preview.py | N2 |
 | N6 prose | SKILL.md, references/*.md, README.md | N1 (CLI contract above) |
 | N7 integration | cli wiring review, Q1-Q3 | N3-N6 |
 | N8 E2E QA | Q4-Q8 in a temp project | N7 |
 | N9 closing | per wish verification: combined QA, PR/merge, final review, cleanup, symlink install | N8 |
 
 Parallel: N3, N4, N5, N6 run concurrently (disjoint files); `cli.py` registration lines for N3-N5 are pre-declared in N1 as imports of modules that each node creates (each module exposes `register(subparsers)`).
+
+## Gate round 1 amendments (category-based plan review, deep-high)
+
+1. **RM2000 export (R15/Q7):** `charset --format rm2k` always writes the 288x256 indexed engine sheet (8 slots, 4x2, each 72x128); `--slot 0-7` chooses the slot and merges into an existing 288x256 sheet when `--out` exists. The 72x128 block is an intermediate only. Q7 verifies 288x256, mode P, 256-entry palette, index 0 = key, character in slot 0, rows Up/Right/Down/Left.
+2. **Wall axis (R2/R5/Q4):** 3/4 walls repeat horizontally along a wall run: default seam axis `x` for `wall`; `--axis xy` for walls that also stack vertically. Trims repeat along their length (`x` for horizontal, `y` for vertical). The same axis is used for `offset`, `check`, and `preview --repeat`. pack.json records each asset's axis.
+3. **Variants (R6):** `pack.md` defines the variant workflow: accepted asset (raw + pixelized) as `reference_image_paths`, prompt = same asset with only the variant change (lighter/darker/damaged/mossy), same px and canvas, pixelize with the pack palette, `pack add --variant-of NAME`. Q4 includes one variant (dark cobblestone).
+4. **Per-size redraw evidence (R8/Q4):** `pack add` records `raw` (the generation file) and `reference` (the accepted larger-size asset used as identity reference). Q4 verifies each smaller px entry has its own raw file (distinct hash from the larger size's raw) and a `reference` pointing at the accepted larger asset, and that the generate_image call for it passed that reference.
+5. **Interaction gates (R7/R16/Q6/Q7):** SKILL.md: ask with `ask_user_question` (16/32/48 multi-select) when available; otherwise ask in the reply and stop the turn. Q6 and Q7 run in a real child session: the child must end its turn with the px question / master-approval request and no generation for the dependent step; the lead then answers via task_send and verifies generation happens only after the answer (file timestamps / absence before, presence after).
+6. **Attempt limit and candidate retention (R5):** `pack add` records every candidate (`status: candidate|accepted|rejected`, `attempt`, `raw`), never deletes files, and refuses a 4th generation attempt for the same asset+px with exit 2 (`attempt limit reached (3)`), instructing to record a manual task. Unit-tested (Q3). SKILL.md and qc.md state the loop; Q4 verifies raw candidates remain on disk.
+7. **Face repair (R16):** new `touch IMG --set X,Y=#RRGGBB ... [--pack DIR] --out OUT` command (N5 scope, module `edit.py`) for small logical-pixel repairs restricted to the pack palette; `character.md` defines the trigger (eyes/mouth unreadable in the @8x view of front/side frames at 16/24x32) and the rule to keep identity, palette and frame geometry; re-run `check`/`frames` afterward. Unit-tested.
+8. **Q2 detail:** the audit runs `--help` for every command and nested `pack` actions named in the docs.
+
+## Gate round 2 amendments
+
+9. **Pre-generation attempt reservation (R5):** `pack attempt DIR --name --kind --px [--reference] [--variant-of] [--axis] [--prompt]` runs BEFORE every `generate_image` call for that asset+px. It reserves attempt k (1..3), prints `ATTEMPT` and the `OUTPUT` raw path prefix (`raw/<name>@<px>_a<k>`) to pass as `output_path`, and exits 2 with `attempt limit reached (3)` on a 4th reservation. SKILL.md hard rule: no `generate_image` call for an asset without a successful reservation for that call. `pack accept` accepts only raw files that live under a reserved attempt prefix. Proof: unit test of the 4th-reservation refusal and prefix-only acceptance (Q3), plus a trace audit in Q4/Q7/Q8: in the child's full transcript every `generate_image` call is preceded by a successful `pack attempt` for the same asset+px, and no asset+px has more than 3 generation calls.
+10. **Interaction-gate proof (Q6/Q7):** the lead reads the child's full tool-call transcript (`task_output` mode full) and requires zero `generate_image` calls in the turn that asked the px question / master-approval request; dependent generation calls appear only after the lead's answer message.
 
 ## Out of scope
 
