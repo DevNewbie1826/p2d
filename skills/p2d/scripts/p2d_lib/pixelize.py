@@ -158,6 +158,33 @@ def apply_palette(rgba: Arr, max_colors: int, palette: Optional[Sequence[Tuple[i
     return out
 
 
+def despeckle_auto(rgba: Arr) -> Tuple[Arr, int, bool]:
+    """Replace input singletons by a strict neighbor majority, in row order, up to 3%."""
+    out = rgba.copy()
+    height, width = rgba.shape[:2]
+    cap = int((rgba[..., 3] > 0).sum()) * 3 // 100
+    changed = 0
+    capped = False
+    for y, x in np.argwhere(rgba[..., 3] > 0):
+        neighbours = [
+            rgba[ny, nx, :3]
+            for ny, nx in ((y - 1, x), (y + 1, x), (y, x - 1), (y, x + 1))
+            if 0 <= ny < height and 0 <= nx < width and rgba[ny, nx, 3] > 0
+        ]
+        if not neighbours or any(np.array_equal(n, rgba[y, x, :3]) for n in neighbours):
+            continue
+        colors, counts = np.unique(neighbours, axis=0, return_counts=True)
+        winner = int(counts.argmax())
+        if counts[winner] * 2 <= len(neighbours):
+            continue
+        if changed >= cap:
+            capped = True
+            continue
+        out[y, x, :3] = colors[winner]
+        changed += 1
+    return out, changed, capped
+
+
 def place(grid: Arr, size: Tuple[int, int], anchor: str) -> Arr:
     w, h = size
     canvas = np.zeros((h, w, 4), dtype=np.uint8)
@@ -179,7 +206,7 @@ def pixelize_image(
     tol: float = DEFAULT_TOL,
     anchor: str = "bottom",
     margin: int = 0,
-    do_despeckle: bool = False,
+    do_despeckle: bool | str = False,
 ) -> Tuple[Arr, Dict[str, Any]]:
     if kind not in KINDS:
         raise P2DError("unknown kind %r (%s)" % (kind, ", ".join(KINDS)))
@@ -192,8 +219,12 @@ def pixelize_image(
     info: Dict[str, Any] = {"background": mode}
     if kind in SURFACE_KINDS:
         px, py = iw / w, ih / h
-        ox, oy = best_phase(img, 0.0, 0.0, px, py, w, h, 0.25)
-        out = sample_grid(img, ox, oy, px, py, w, h)
+        if (iw, ih) == size:
+            ox, oy = 0.0, 0.0
+            out = img.copy()
+        else:
+            ox, oy = best_phase(img, 0.0, 0.0, px, py, w, h, 0.25)
+            out = sample_grid(img, ox, oy, px, py, w, h)
         info.update(pitch=[round(px, 3), round(py, 3)], phase=[round(ox, 2), round(oy, 2)], subject=[w, h])
     else:
         box = subject_bbox(img[..., 3])
@@ -216,9 +247,12 @@ def pixelize_image(
             raise P2DError("subject vanished while sampling; check the background mode")
         out = place(grid, size, anchor)
         info.update(pitch=[round(pitch, 3), round(pitch, 3)], phase=[round(ox, 2), round(oy, 2)], subject=[int(grid.shape[1]), int(grid.shape[0])])
-    if do_despeckle:
+    if do_despeckle and do_despeckle != "auto":
         out = despeckle(out)
     out = apply_palette(out, max_colors, palette)
+    if do_despeckle == "auto":
+        out, changed, capped = despeckle_auto(out)
+        info.update(despeckled=changed, despeckle_capped=capped)
     info["colors"] = color.count_colors(out)
     return out, info
 
@@ -378,6 +412,15 @@ def cmd_pixelize(args: argparse.Namespace) -> int:
     if args.palette:
         palette = color.load_palette(args.palette)
     rgba = load_rgba(args.image)
+    if args.from_block is not None and args.from_block < 1:
+        raise P2DError("--from-block must be positive")
+    if args.from_block is None and not args.force_size:
+        ih, iw = rgba.shape[:2]
+        pitch = detect_pitch(rgba, max_pitch=max(64, iw // size[0], ih // size[1]))
+        # Pitch 1 in a many-color raw means an unaligned generation, not a native grid.
+        aligned = pitch > 1 or color.count_colors(rgba) <= 256
+        if aligned and iw / pitch >= 2 * size[0] and ih / pitch >= 2 * size[1]:
+            raise P2DError("requested size halves the generated grid; pixelize at the block size and use split")
     out, info = pixelize_image(
         rgba,
         args.kind,
@@ -399,6 +442,10 @@ def cmd_pixelize(args: argparse.Namespace) -> int:
     emit("SUBJECT", "%dx%d" % tuple(info["subject"]))
     emit("COLORS", info["colors"])
     emit("PALETTE", "pack/palette file" if palette else "median-cut")
+    if args.despeckle == "auto":
+        emit("DESPECKLED", info["despeckled"])
+        if info["despeckle_capped"]:
+            emit("DESPECKLE_CAPPED", "yes")
     if args.scale:
         preview = scaled_path(args.out, args.scale)
         save_rgba(upscale(out, args.scale), preview)
@@ -428,6 +475,9 @@ def configure(name: str, parser: argparse.ArgumentParser) -> Callable[[argparse.
     parser.add_argument("--tol", type=float, default=DEFAULT_TOL, help="key distance tolerance")
     parser.add_argument("--anchor", choices=["bottom", "center"], default="bottom", help="prop placement")
     parser.add_argument("--margin", type=int, default=0, help="empty logical pixels kept around a prop")
-    parser.add_argument("--despeckle", action="store_true", help="remove isolated single pixels")
+    parser.add_argument("--from-block", type=int, default=None, metavar="N", help="explicit source block logical size")
+    parser.add_argument("--force-size", action="store_true", help="allow a requested size that halves the detected grid")
+    parser.add_argument("--despeckle", nargs="?", const="legacy", choices=["legacy", "auto"],
+                        default=False, help="remove isolated pixels (auto: majority, at most 3%%)")
     parser.add_argument("--scale", type=int, default=0, help="also write NAME@Kx.png nearest-neighbour preview")
     return cmd_pixelize

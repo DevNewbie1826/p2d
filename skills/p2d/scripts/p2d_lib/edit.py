@@ -109,6 +109,9 @@ def cmd_touch(args: argparse.Namespace) -> int:
     clears = [_parse_clear(text) for text in (args.clear or [])]
     out = touch(rgba, sets, clears, _resolve_palette(args))
     changed = int(np.any(out != rgba, axis=-1).sum())
+    limit = max(8, int((rgba[..., 3] > 0).sum()) * 0.02)
+    if changed > limit and not args.force_many:
+        raise P2DError("touch changes %d pixels, over the limit of %.2f; use --force-many" % (changed, limit))
     save_rgba(out, args.out)
     emit("OUT", args.out)
     emit("CHANGED", changed)
@@ -124,4 +127,5 @@ def configure(name: str, parser: argparse.ArgumentParser) -> Callable[[argparse.
     parser.add_argument("--pack", help="pack directory; colors must belong to its palette")
     parser.add_argument("--palette", help="palette .hex file or preset (overrides --pack)")
     parser.add_argument("--out", required=True)
+    parser.add_argument("--force-many", action="store_true", help="allow more than max(8, 2%% of opaque pixels) changes")
     return cmd_touch

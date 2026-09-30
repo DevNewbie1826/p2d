@@ -61,3 +61,15 @@ p2d.py preview DIR/assets/<name>/<name>@<P>.png --repeat 4 --unit <2P> --out DIR
 ## Deliverables
 
 `<name>@<P>.png` per px, its `@8x` preview, and the repeat preview. Record `--axis xy` on `pack attempt` for the asset.
+
+## Native blocks and pixel guards
+
+Pixelize a generated 2x2 block at its full logical size, check it, then cut it with `split` (no resampling):
+
+```sh
+p2d.py pixelize RAW --kind tile --size 32x32 --pack DIR --out DIR/assets/water/water-block@16.png
+p2d.py check DIR/assets/water/water-block@16.png --kind tile --size 32x32 --pack DIR
+p2d.py split DIR/assets/water/water-block@16.png --unit 16 --out DIR/assets/water --name water
+```
+
+`split` writes `<name>-r{row}c{col}@P.png` (0-based). Choose the cell that best matches the accepted features as `<name>@P.png` and keep the others as variants. `pixelize` refuses a --size that halves the generated grid (the lava mistake); do not bypass it with `--force-size`. `pixelize --despeckle auto` replaces only isolated pixels by the majority neighbour colour (capped at 3%) and prints `DESPECKLED: n`; `check` prints `NOISE_HINT` with the rate it would reach. Never lower `--max-colors` below the budget to pass NOISE (`COLORS_BELOW_BUDGET`); redraw with fewer, larger features instead.
