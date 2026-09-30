@@ -87,7 +87,7 @@ Inspect the raw first if equal-cell cuts report clipped figures. When every figu
 
 ### 4. Face check and repair
 
-REQUIRED after every master pixelization and walk-frame cut: run `face` on the master and one down, left and right frame, list every dark iris/pupil pixel (both pixels of a 1x2 core, both front eyes), and choose an actual face-skin pixel. Coordinates are native frame pixels, 0-based, not preview coordinates. White/pale sclera is inspected in the crop, not listed as a dark eye core:
+REQUIRED after every master pixelization and walk-frame cut: run `face` on the master and one down, left and right frame, list every dark iris/pupil pixel (both pixels of a 1x2 core, both front eyes), and choose an actual face-skin pixel. Coordinates are native frame pixels, 0-based, not preview coordinates. White/pale sclera is not listed as an eye core; it counts as face around the eye. Each eye (a connected group of listed pixels) needs face (skin tone or sclera) on 2 sides per eye pixel, or 1 per pixel for a single side-view eye; all 24 front/side idle frames of the measured RM2000 charset pass, a knight whose eyes sit in hair fails. For an opaque sheet pass its background with `--key`:
 
 ```
 p2d.py face FRAME --eyes <X,Y X,Y ...> --skin <X,Y> --scale 8

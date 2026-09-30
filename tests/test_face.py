@@ -55,5 +55,21 @@ class FaceTest(unittest.TestCase):
         self.assertIn("contrast", out)
 
 
+class OriginalSpriteTest(unittest.TestCase):
+    def test_side_eye_buried_in_hair_fails(self):
+        a = face(True)
+        a[9:14, 6:18] = HAIR
+        a[11, 14] = EYE
+        p = h.save(a, os.path.join(h.tmp(), "s.png"))
+        code, out, _ = h.run_cli("face", p, "--eyes", "14,11", "--skin", "10,15")
+        self.assertEqual(code, 1, out)
+
+    def test_original_rm2k_eyes_with_sclera_pass(self):
+        p = os.path.join(os.path.dirname(__file__), "fixtures", "rm2k-down.png")
+        code, out, err = h.run_cli("face", p, "--eyes", "10,15", "10,16", "13,15", "13,16", "--skin", "11,17",
+                                   "--key", "#009392", "--out", os.path.join(h.tmp(), "c.png"))
+        self.assertEqual(code, 0, out + err)
+
+
 if __name__ == "__main__":
     unittest.main()
