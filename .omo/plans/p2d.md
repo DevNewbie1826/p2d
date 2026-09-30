@@ -155,4 +155,4 @@ Grok/PixelLab backends, API-key backends, autotile/Wang/blob tilesets, engine-sp
 
 ## Follow-up file
 
-Evidence directory: `/Volumes/storage/workspace/p2d/.omo/evidence/p2d/` (created at execution; gitignored). Follow-up file: `/Volumes/storage/workspace/p2d/.omo/evidence/p2d/follow-ups.md` — created only if a real out-of-scope finding appears.
+Evidence directory: `/Volumes/storage/workspace/p2d/.omo/evidence/ulw/01a0f058-d795-73a3-8178-bb9c186cbb18/` (ulw-loop evidenceRoot; gitignored). Follow-up file: `/Volumes/storage/workspace/p2d/.omo/evidence/ulw/01a0f058-d795-73a3-8178-bb9c186cbb18/follow-ups.md` — created only if a real out-of-scope finding appears.
