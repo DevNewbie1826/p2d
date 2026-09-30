@@ -123,6 +123,17 @@ class PackStateTest(unittest.TestCase):
         self.assertIn(os.path.basename(stray), out)
         self.assertEqual(h.kv(out)["RESULT"], "ATTENTION")
 
+    def test_status_flags_pngs_delivered_outside_assets(self):
+        for folder in ("raw", "work", "previews"):
+            self.image(os.path.join(self.directory, folder, "x.png"))
+        self.assertEqual(h.kv(self.cli("status", self.directory))["RESULT"], "OK")
+        self.image(os.path.join(self.directory, "lava@16.png"))
+        self.image(os.path.join(self.directory, "tiles", "lava-r0c0@16.png"))
+        out = self.cli("status", self.directory)
+        self.assertIn("STRAY_PNG: lava@16.png", out)
+        self.assertIn("STRAY_PNG: tiles/lava-r0c0@16.png", out)
+        self.assertEqual(h.kv(out)["RESULT"], "ATTENTION")
+
     def test_generated_and_accepted_statuses_and_hashes(self):
         out = self.reserve()
         raw = self.image(h.kv(out)["OUTPUT"])

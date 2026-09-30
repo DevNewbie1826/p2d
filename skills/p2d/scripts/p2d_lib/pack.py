@@ -391,6 +391,14 @@ def _status(directory: str, data: Dict[str, Any]) -> int:
             if filename.lower().endswith(".png") and "@8x" not in filename.lower() and os.path.realpath(path) not in accepted_files:
                 emit("UNTRACKED_ASSET_FILE", os.path.relpath(path, directory))
                 attention = True
+    for folder, subdirs, files in os.walk(directory):
+        rel = os.path.relpath(folder, directory)
+        if rel == ".":
+            subdirs[:] = [d for d in subdirs if d not in ("assets", "raw", "work", "previews")]
+        for filename in sorted(files):
+            if filename.lower().endswith(".png"):
+                emit("STRAY_PNG", os.path.relpath(os.path.join(folder, filename), directory).replace(os.sep, "/"))
+                attention = True
     save_pack(directory, data)
     emit("RESULT", "ATTENTION" if attention else "OK")
     return 0
