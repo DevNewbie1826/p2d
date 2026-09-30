@@ -125,6 +125,39 @@ def _outline_gaps(rgba: Arr, palette: Sequence[Tuple[int, int, int]]) -> Tuple[i
     return int(gaps.sum()), locations
 
 
+def cluster_stats(rgba: Arr) -> Tuple[float, float]:
+    """Percent of opaque pixels with no same-color 4-neighbor, and mean same-color 4-connected cluster size."""
+    opaque = rgba[..., 3] > 0
+    total = int(opaque.sum())
+    if total == 0:
+        return 0.0, 0.0
+    rgb = rgba[..., :3].astype(np.int32)
+    code = (rgb[..., 0] << 16) | (rgb[..., 1] << 8) | rgb[..., 2]
+    code = np.where(opaque, code, -1)
+    padded = np.pad(code, 1, constant_values=-2)
+    same = np.zeros(code.shape, dtype=bool)
+    for dy, dx in ((0, 1), (2, 1), (1, 0), (1, 2)):
+        same |= padded[dy : dy + code.shape[0], dx : dx + code.shape[1]] == code
+    singletons = int((opaque & ~same).sum())
+    seen = np.zeros(code.shape, dtype=bool)
+    clusters = 0
+    height, width = code.shape
+    for y0, x0 in np.argwhere(opaque):
+        if seen[y0, x0]:
+            continue
+        clusters += 1
+        value = code[y0, x0]
+        seen[y0, x0] = True
+        pending = [(int(y0), int(x0))]
+        while pending:
+            y, x = pending.pop()
+            for ny, nx in ((y - 1, x), (y + 1, x), (y, x - 1), (y, x + 1)):
+                if 0 <= ny < height and 0 <= nx < width and not seen[ny, nx] and code[ny, nx] == value:
+                    seen[ny, nx] = True
+                    pending.append((ny, nx))
+    return singletons / total * 100.0, total / clusters
+
+
 def cmd_check(args: argparse.Namespace) -> int:
     if args.outline_colors is not None and args.kind not in CUTOUT:
         raise P2DError("--outline-colors is only supported for prop/frame")
@@ -146,6 +179,7 @@ def cmd_check(args: argparse.Namespace) -> int:
     edges = _edge_touch(rgba)
     ratios = [(name, seam.seam_ratio(rgba, name)) for name in _checked_axes(axis)]
     outside = _outside_palette(rgba, palette) if palette else 0
+    singleton_percent, mean_cluster = cluster_stats(rgba)
 
     reasons: List[str] = []
     if (width, height) != (expected_w, expected_h):
@@ -163,6 +197,8 @@ def cmd_check(args: argparse.Namespace) -> int:
     for name, ratio in ratios:
         if ratio > args.seam_max:
             reasons.append("SEAM_%s %.4f too high" % (name.upper(), ratio))
+    if args.max_singletons is not None and singleton_percent > args.max_singletons:
+        reasons.append("SINGLETON_PERCENT %.1f over %.1f (speckle noise)" % (singleton_percent, args.max_singletons))
     if args.kind in CUTOUT and not opaque.any():
         reasons.append("no opaque pixel")
     if args.kind in CUTOUT and transparent == 0 and not args.allow_opaque:
@@ -188,6 +224,8 @@ def cmd_check(args: argparse.Namespace) -> int:
     for name, ratio in ratios:
         emit("SEAM_%s" % name.upper(), "%.4f" % ratio)
     emit("EDGE_TOUCH", edges)
+    emit("SINGLETON_PERCENT", "%.1f" % singleton_percent)
+    emit("MEAN_CLUSTER", "%.2f" % mean_cluster)
     return emit_result(not reasons, reasons)
 
 
@@ -204,6 +242,12 @@ def configure(name: str, parser: argparse.ArgumentParser) -> Callable[[argparse.
         help="seam axes (default: tile xy, wall x, trim x if width >= height else y, prop/frame none)",
     )
     parser.add_argument("--seam-max", type=float, default=1.6, help="fail when a checked seam ratio is above this")
+    parser.add_argument(
+        "--max-singletons",
+        type=float,
+        default=None,
+        help="fail when more than this percent of opaque pixels have no same-color 4-neighbor (speckle noise)",
+    )
     parser.add_argument("--key", default=None, help="key color (default: pack key or #ff00ff)")
     parser.add_argument("--allow-opaque", action="store_true", help="allow a prop or frame with no transparent pixels")
     parser.add_argument(

@@ -281,6 +281,26 @@ class SeamTest(unittest.TestCase):
 
 
 class CheckTest(unittest.TestCase):
+    def test_speckle_noise_fails_singleton_cap_but_clusters_pass(self):
+        directory = h.tmp()
+        rng = np.random.default_rng(7)
+        colors = np.array([[40, 60, 160, 255], [90, 120, 220, 255], [240, 240, 255, 255]], dtype=np.uint8)
+        noise = colors[rng.integers(0, 3, size=(16, 16))]
+        noisy = h.save(noise, os.path.join(directory, "noise.png"))
+        code, out, err = h.run_cli("check", noisy, "--kind", "tile", "--size", "16x16", "--max-singletons", "20")
+        kv = h.kv(out)
+        self.assertEqual(code, 1, out + err)
+        self.assertGreater(float(kv["SINGLETON_PERCENT"]), 20)
+        self.assertTrue(any("SINGLETON" in reason for reason in reasons(out)))
+        blocks = colors[np.kron(rng.integers(0, 3, size=(4, 4)), np.ones((4, 4), dtype=int))]
+        clean = h.save(blocks, os.path.join(directory, "clean.png"))
+        code, out, err = h.run_cli(
+            "check", clean, "--kind", "tile", "--size", "16x16", "--axis", "none", "--max-singletons", "20"
+        )
+        self.assertEqual(code, 0, out + err)
+        self.assertLessEqual(float(h.kv(out)["SINGLETON_PERCENT"]), 20)
+        self.assertGreater(float(h.kv(out)["MEAN_CLUSTER"]), 3)
+
     def test_periodic_native_tile_passes(self):
         directory = h.tmp()
         tile = periodic_tile()
