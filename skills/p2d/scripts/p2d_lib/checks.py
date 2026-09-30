@@ -125,6 +125,27 @@ def _outline_gaps(rgba: Arr, palette: Sequence[Tuple[int, int, int]]) -> Tuple[i
     return int(gaps.sum()), locations
 
 
+# (singleton % warning above, mean cluster warning below) per kind and tile size,
+# measured on original human-made 16/32/48 packs; frames use character bands.
+NOISE_PROFILE = {
+    ("tile", 16): (20.0, 3.0), ("tile", 32): (12.0, 5.0), ("tile", 48): (10.0, 6.0),
+    ("trim", 16): (20.0, 3.0), ("trim", 32): (12.0, 5.0), ("trim", 48): (10.0, 6.0),
+    ("wall", 16): (15.0, 3.0), ("wall", 32): (5.0, 10.0), ("wall", 48): (5.0, 10.0),
+    ("prop", 16): (20.0, 3.0), ("prop", 32): (8.0, 6.0), ("prop", 48): (15.0, 3.0),
+    ("frame", 16): (28.0, 2.0), ("frame", 32): (30.0, 2.25), ("frame", 48): (25.0, 3.0),
+}
+
+
+def noise_limits(kind: str, width: int, height: int) -> Optional[Tuple[float, float]]:
+    unit = min(width, height)
+    if kind == "frame" and (width, height) == (24, 32):
+        unit = 16
+    for px in (48, 32, 16):
+        if unit >= px:
+            return NOISE_PROFILE[(kind, px)]
+    return None
+
+
 def cluster_stats(rgba: Arr) -> Tuple[float, float]:
     """Percent of opaque pixels with no same-color 4-neighbor, and mean same-color 4-connected cluster size."""
     opaque = rgba[..., 3] > 0
@@ -226,6 +247,10 @@ def cmd_check(args: argparse.Namespace) -> int:
     emit("EDGE_TOUCH", edges)
     emit("SINGLETON_PERCENT", "%.1f" % singleton_percent)
     emit("MEAN_CLUSTER", "%.2f" % mean_cluster)
+    limits = noise_limits(args.kind, width, height)
+    if limits is not None:
+        flagged = singleton_percent > limits[0] or mean_cluster < limits[1]
+        emit("NOISE_REVIEW", "yes (singleton > %.0f%% or cluster < %.2f)" % limits if flagged else "no")
     return emit_result(not reasons, reasons)
 
 

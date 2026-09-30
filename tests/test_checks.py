@@ -300,6 +300,9 @@ class CheckTest(unittest.TestCase):
         self.assertEqual(code, 0, out + err)
         self.assertLessEqual(float(h.kv(out)["SINGLETON_PERCENT"]), 20)
         self.assertGreater(float(h.kv(out)["MEAN_CLUSTER"]), 3)
+        self.assertEqual(h.kv(out)["NOISE_REVIEW"], "no")
+        code, out, err = h.run_cli("check", noisy, "--kind", "tile", "--size", "16x16", "--axis", "none")
+        self.assertTrue(h.kv(out)["NOISE_REVIEW"].startswith("yes"), out)
 
     def test_periodic_native_tile_passes(self):
         directory = h.tmp()
