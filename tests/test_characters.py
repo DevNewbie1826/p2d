@@ -405,6 +405,18 @@ class CharsetVxAceTest(unittest.TestCase):
         self.assertEqual(sheet[5, 5, 3], 0, "outside the slot stays transparent")
         self.assertEqual(sheet[100, 300, 3], 255, "inside the slot is opaque")
 
+    def test_object_eight_sheet_keeps_earlier_slots(self):
+        base = os.path.join(self.d, "squad.png")
+        for slot in ("0", "1"):
+            code, _, se = h.run_cli(
+                "charset", "--format", "vxace", "--frames", self.frames, "--out", base,
+                "--sheet", "eight", "--object", "--slot", slot,
+            )
+            self.assertEqual(code, 0, se)
+        sheet = h.load(os.path.join(self.d, "!squad.png"))
+        self.assertTrue(np.array_equal(sheet[0:32, 0:32], self.frame(0, 0)), "slot 0 survives slot 1")
+        self.assertTrue(np.array_equal(sheet[0:32, 96:128], self.frame(0, 0)))
+
 
 class GifTest(unittest.TestCase):
     @classmethod

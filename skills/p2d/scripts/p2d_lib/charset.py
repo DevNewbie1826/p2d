@@ -121,7 +121,8 @@ def cmd_charset(args: argparse.Namespace) -> int:
         else:
             sw, sh = fmt["sheet"]
             bw, bh = fmt["block"]
-            sheet = _load_sheet(args.out, (sw, sh)) if os.path.exists(args.out) else np.zeros((sh, sw, 4), dtype=np.uint8)
+            existing = _prefixed_out(args.out, False, args.object)
+            sheet = _load_sheet(existing, (sw, sh)) if os.path.exists(existing) else np.zeros((sh, sw, 4), dtype=np.uint8)
             bx, by = (args.slot % fmt["slots"][0]) * bw, (args.slot // fmt["slots"][0]) * bh
             for d, direction in enumerate(sheet_rows):
                 for p in range(3):
