@@ -18,12 +18,21 @@ Frame size = the character frame for the px (24x32, 32x32, 48x48). A weapon or p
 
 Default facing: toward the viewer (down) on maps; left for side-view battlers. Name each sheet `<char>-<action>-<facing>`.
 
+When four directions are requested, deliver down, left, right and up as four separately generated action sheets. Do not silently substitute one facing or put unrelated directions into an attack grid. Use the matching standing frame for each direction as its identity and geometry reference.
+
 ## Body sheet prompt
 
-Reserve `pack attempt DIR --name <char>-<action>-<facing> --kind animation --px P --reference <approved master or walk raw>`, canvas `size <cols*W>x<rows*H>`.
+For grounded actions, first build an anchor guide from the accepted native standing frame for the requested facing:
+
+```
+p2d.py anchor STANDING.png --rows R --cols C --cell 256x256 --margin 32 --out DIR/work/<char>/<action>-<facing>-guide.png
+```
+
+Read the guide into context and reserve `pack attempt DIR --name <char>-<action>-<facing> --kind animation --px P --reference GUIDE`. Preserve its aspect ratio and geometry during generation. Use the same cell geometry and integer scale for compatible actions at the same px. A different target px needs a separately redrawn and accepted standing reference first, not an enlarged smaller sprite.
 
 ```
 Image 1 is the approved character. Draw a <N>-frame <action> animation of exactly this character facing <facing>, same design, colors and proportions.
+The displayed anchor guide fixes cell centers, standing body scale and feet baselines. Change only the poses, never zoom individual frames or fill the empty margins.
 Exactly <N> equal cells in <rows> rows and <cols> columns, read left to right, top to bottom: <frame 1: anticipation>, <frame 2: ...>, ..., <last: recovery>.
 Body only: no slash arc, trail, spark, projectile, dust or impact effect.
 Same body size in every cell, <grounded actions: feet on the same line in every cell>, the whole body and weapon inside the central 70% of each cell, nothing crosses a cell edge, no lines between cells.
@@ -37,6 +46,8 @@ p2d.py frames RAW --rows R --cols C --frame WxH --subject-height <subject_height
 ```
 
 Grounded actions (idle, attack, cast, hurt) must pass strict QC. Jumps, knockback, death and anything whose silhouette changes on purpose add `--loose`, then are judged visually. `--profile` reuses the exact raw-pixel pitch and is only valid for a raw with the same canvas size and grid as the profiled one.
+
+If equal cuts intersect intact figures separated by empty background bands, inspect the raw and try `--layout whitespace`. Missing or ambiguous separators must remain failures. If a blade widens the pose beyond the delivery frame, request a more compact pose or an explicitly wider delivery frame without shrinking only that action's body. Do not use `--loose` merely to make a failed attack pass.
 
 ## Effects
 

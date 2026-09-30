@@ -36,6 +36,36 @@ def _cell_span(total: int, parts: int, index: int) -> Tuple[int, int]:
     return int(index * total / parts), int((index + 1) * total / parts)
 
 
+def _whitespace_spans(occupied: Arr, parts: int, axis: str) -> List[Tuple[int, int]]:
+    """Cut only at unique, fully empty internal gaps near equal-grid boundaries."""
+    total = len(occupied)
+    transitions = np.diff(np.r_[False, ~occupied, False].astype(np.int8))
+    gaps = [
+        (int(start), int(end))
+        for start, end in zip(np.flatnonzero(transitions == 1), np.flatnonzero(transitions == -1))
+        if start > 0 and end < total
+    ]
+    cuts = [0]
+    used: List[Tuple[int, int]] = []
+    radius = total / parts / 4
+    for index in range(1, parts):
+        expected = index * total / parts
+        candidates = [(start, end) for start, end in gaps if start <= expected + radius and end > expected - radius]
+        if len(candidates) != 1:
+            raise P2DError(
+                "whitespace layout: %s separator %d near %.1f has %d empty gaps (missing or ambiguous)"
+                % (axis, index, expected, len(candidates))
+            )
+        start, end = candidates[0]
+        cut = (start + end) // 2
+        if (start, end) in used or not expected - radius <= cut <= expected + radius:
+            raise P2DError("whitespace layout: %s separator %d is ambiguous or too far from its expected boundary" % (axis, index))
+        used.append((start, end))
+        cuts.append(cut)
+    cuts.append(total)
+    return list(zip(cuts[:-1], cuts[1:]))
+
+
 def _place(grid: Arr, size: Tuple[int, int], anchor: str, dx: int) -> Tuple[Arr, bool]:
     w, h = size
     gh, gw = grid.shape[:2]
@@ -77,11 +107,15 @@ def cmd_frames(args: argparse.Namespace) -> int:
     cap = max_colors or 16
     img = pixelize.remove_background(load_rgba(args.raw), args.bg, key, args.tol)
     ih, iw = img.shape[:2]
+    yspans = [_cell_span(ih, args.rows, r) for r in range(args.rows)]
+    xspans = [_cell_span(iw, args.cols, c) for c in range(args.cols)]
+    if args.layout == "whitespace":
+        occupied = img[..., 3] > 0
+        yspans = _whitespace_spans(occupied.any(axis=1), args.rows, "row")
+        xspans = _whitespace_spans(occupied.any(axis=0), args.cols, "column")
     entries: List[Dict[str, Any]] = []
-    for r in range(args.rows):
-        y0, y1 = _cell_span(ih, args.rows, r)
-        for c in range(args.cols):
-            x0, x1 = _cell_span(iw, args.cols, c)
+    for r, (y0, y1) in enumerate(yspans):
+        for c, (x0, x1) in enumerate(xspans):
             cell = img[y0:y1, x0:x1]
             ch, cw = cell.shape[:2]
             box = pixelize.subject_bbox(cell[..., 3])
@@ -89,6 +123,7 @@ def cmd_frames(args: argparse.Namespace) -> int:
                 "row": r,
                 "col": c,
                 "file": "r%dc%d.png" % (r, c),
+                "cell_bounds": [x0, y0, x1, y1],
                 "empty": box is None,
                 "source_edge_touch": False,
                 "paste_clamped": False,
@@ -148,6 +183,12 @@ def cmd_frames(args: argparse.Namespace) -> int:
     bottoms = [e["meta"]["bottom_y"] for e in entries if e["box"] is not None]
     scale_cv = float(np.std(heights) / np.mean(heights)) if heights else 0.0
     anchor_std = float(np.std(bottoms) / (ih / args.rows)) if bottoms else 0.0
+    if args.layout == "whitespace":
+        normalized_bottoms = [
+            e["meta"]["bottom_y"] / (e["meta"]["cell_bounds"][3] - e["meta"]["cell_bounds"][1])
+            for e in entries if e["box"] is not None
+        ]
+        anchor_std = float(np.std(normalized_bottoms)) if normalized_bottoms else 0.0
     empty_names = [e["meta"]["file"] for e in entries if e["meta"]["empty"]]
     touch_names = [e["meta"]["file"] for e in entries if e["meta"]["source_edge_touch"]]
     clamp_names = [e["meta"]["file"] for e in entries if e["meta"]["paste_clamped"]]
@@ -172,6 +213,7 @@ def cmd_frames(args: argparse.Namespace) -> int:
         "frame": [fw, fh],
         "rows": args.rows,
         "cols": args.cols,
+        "layout": args.layout,
         "anchor": args.anchor,
         "subject_height": subject_height,
         "pitch": round(pitch, 4),
@@ -275,6 +317,8 @@ def configure(name: str, parser: argparse.ArgumentParser) -> Callable[[argparse.
     parser.add_argument("raw", help="generated grid image")
     parser.add_argument("--rows", type=int, required=True, help="generation rows in the grid")
     parser.add_argument("--cols", type=int, required=True, help="generation columns in the grid")
+    parser.add_argument("--layout", choices=["fixed", "whitespace"], default="fixed",
+                        help="fixed equal cells (default), or unique empty separators within one quarter cell of each boundary")
     parser.add_argument("--frame", required=True, help="logical frame size WxH, e.g. 24x32")
     parser.add_argument("--out", required=True, help="output dir for r{row}c{col}.png and frames.json")
     parser.add_argument("--anchor", choices=["feet", "center"], default="feet", help="vertical anchoring of the subject")

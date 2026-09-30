@@ -71,6 +71,79 @@ def run_frames(raw: str, out_dir: str, *extra: str):
 
 
 class FramesCommandTest(unittest.TestCase):
+    def uneven_raw(self) -> np.ndarray:
+        raw = np.zeros((480, 250, 4), dtype=np.uint8)
+        raw[..., :3] = MAGENTA
+        raw[..., 3] = 255
+        for r, y in enumerate([66, 178, 286, 394]):
+            for c, x in enumerate([20, 106, 184]):
+                art = np.repeat(np.repeat(figure(r, c), 4, 0), 4, 1)
+                raw[y:y + 56, x:x + 40] = art
+        return raw
+
+    def test_whitespace_layout_keeps_uneven_intact_sprites_and_actual_bounds(self):
+        d = h.tmp()
+        raw = h.save(self.uneven_raw(), os.path.join(d, "uneven.png"))
+        fixed_code, fixed_so, _ = run_frames(raw, os.path.join(d, "fixed"))
+        self.assertEqual(fixed_code, 1, fixed_so)
+        self.assertGreater(int(h.kv(fixed_so)["EDGE_TOUCH_FRAMES"]), 0)
+        out_dir = os.path.join(d, "whitespace")
+        code, so, se = run_frames(raw, out_dir, "--layout", "whitespace")
+        self.assertEqual(code, 0, so + se)
+        with open(os.path.join(out_dir, "frames.json")) as fh:
+            data = json.load(fh)
+        self.assertEqual(data["layout"], "whitespace")
+        self.assertEqual(data["edge_touch_frames"], [])
+        self.assertEqual(data["clamped_frames"], [])
+        self.assertEqual(data["frames"][0]["cell_bounds"], [0, 0, 83, 150])
+        normalized = [
+            f["bottom_y"] / (f["cell_bounds"][3] - f["cell_bounds"][1])
+            for f in data["frames"]
+        ]
+        self.assertAlmostEqual(data["anchor_y_std"], float(np.std(normalized)), delta=0.00005)
+        self.assertGreater(data["anchor_y_std"], 0, "observed drift is not zeroed")
+        self.assertEqual({f["bbox_height"] for f in data["frames"]}, {56})
+        for f in data["frames"]:
+            frame = h.load(os.path.join(out_dir, f["file"]))
+            self.assertTrue(frame[31, ..., 3].any(), f["file"])
+            self.assertFalse(frame[0, ..., 3].any(), f["file"])
+
+    def test_whitespace_layout_rejects_actual_outer_edge_clipping_even_loose(self):
+        d = h.tmp()
+        raw = self.uneven_raw()
+        raw[66:122, :20] = raw[66:122, 20:40]
+        path = h.save(raw, os.path.join(d, "clipped.png"))
+        code, so, se = run_frames(path, os.path.join(d, "frames"), "--layout", "whitespace", "--loose")
+        self.assertEqual(code, 1, so + se)
+        self.assertGreater(int(h.kv(so)["EDGE_TOUCH_FRAMES"]), 0)
+
+    def test_whitespace_layout_rejects_missing_or_ambiguous_separators(self):
+        d = h.tmp()
+        for name in ["missing", "ambiguous"]:
+            with self.subTest(name=name):
+                raw = self.uneven_raw()
+                if name == "missing":
+                    raw[100:180, 20] = [30, 40, 50, 255]
+                else:
+                    raw[140, 20] = [30, 40, 50, 255]
+                path = h.save(raw, os.path.join(d, name + ".png"))
+                out_dir = os.path.join(d, name)
+                code, so, se = run_frames(path, out_dir, "--layout", "whitespace", "--loose")
+                self.assertEqual(code, 2, so + se)
+                self.assertIn("separator", se)
+                self.assertFalse(os.path.exists(os.path.join(out_dir, "frames.json")))
+
+    def test_whitespace_layout_reports_and_fails_anchor_drift(self):
+        d = h.tmp()
+        raw = self.uneven_raw()
+        raw = np.pad(raw, ((0, 40), (0, 0), (0, 0)), constant_values=0)
+        path = h.save(raw, os.path.join(d, "drift.png"))
+        out_dir = os.path.join(d, "frames")
+        code, so, se = run_frames(path, out_dir, "--layout", "whitespace", "--bg", "key")
+        self.assertEqual(code, 1, so + se)
+        self.assertGreater(float(h.kv(so)["ANCHOR_Y_STD"]), 0.05)
+        self.assertEqual(h.kv(so)["EDGE_TOUCH_FRAMES"], "0")
+
     def test_pass_grid_cuts_12_anchored_frames_with_shared_palette(self):
         d = h.tmp()
         raw = h.save(character_raw(), os.path.join(d, "raw.png"))

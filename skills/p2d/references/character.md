@@ -36,10 +36,16 @@ Show the `@8x` master and ask the user to approve or give changes (`ask_user_que
 
 ### 3. Walking sheet (4 directions x 3 frames in one generation)
 
-Reserve `pack attempt DIR --name <char>-walk --kind character --px P --reference <approved master raw>`. Canvas: `size <3*frame W>x<4*frame H>` (72x128 at px 16). Reference image 1 = approved master raw.
+Build a geometry reference before generation:
 
 ```
-Image 1 is the approved character. Draw a walking sprite sheet of exactly this character, same design, colors and proportions.
+p2d.py anchor MASTER.png --rows 4 --cols 3 --cell 256x256 --margin 32 --out DIR/work/<char>/walk-guide.png
+```
+
+Use the accepted native PNG as MASTER, not the high-resolution raw. Read the guide image into context. Reserve `pack attempt DIR --name <char>-walk --kind character --px P --reference DIR/work/<char>/walk-guide.png`. Generate at the guide's 3:4 aspect ratio; the delivery frame remains 24x32, 32x32 or 48x48 regardless of raw cell shape. The guide repeats existing artwork; it is a pose-position reference, not the finished animation.
+
+```
+The displayed guide locks character identity, exact cell centers, body scale and foot baselines. Change only poses and facing, never zoom or reposition a character to fill a cell. Preserve the flat pixel style without beveled or embossed blocks.
 Exactly 12 equal cells in 4 rows and 3 columns, no lines, borders or gaps drawn between cells.
 Row 1 faces the viewer (down), row 2 faces left, row 3 faces right, row 4 faces away (up, back view).
 Column 1: left foot forward. Column 2: standing still. Column 3: right foot forward.
@@ -53,6 +59,8 @@ p2d.py frames RAW --rows 4 --cols 3 --frame <frame> --out DIR/work/<char>/walk@<
 ```
 
 `frames` must print `RESULT: PASS` before you continue.
+
+Inspect the raw first if equal-cell cuts report clipped figures. When every figure is intact and fully empty background gaps separate rows and columns, try `--layout whitespace`; missing or ambiguous gaps must fail, not be guessed. It does not permit relaxed QC. Set one shared `--subject-height` with room for the widest walking pose (24 in a 24x32 frame is a starting point); never scale individual frames. If anchor or scale drift remains, regenerate using the guide rather than use `--loose` for walking.
 
 ### 4. Face check and repair
 

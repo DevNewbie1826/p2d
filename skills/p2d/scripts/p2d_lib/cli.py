@@ -19,6 +19,7 @@ COMMANDS = {
     "offset": ("seam", "Roll an image by half (and write a repaint mask) to fix tile seams."),
     "check": ("checks", "QC a finished asset: size, colors, palette, alpha, seams, edges."),
     "frames": ("frames", "Cut a generated grid into shared-scale, anchored animation frames + QC."),
+    "anchor": ("anchor", "Repeat a native sprite into equal key-color cells with exact integer scaling."),
     "gif": ("frames", "Animated GIF preview from frame PNGs."),
     "charset": ("charset", "Assemble an RPG Maker character sheet (2000, VX Ace, MV/MZ)."),
     "touch": ("edit", "Set or clear individual logical pixels (small face/detail repairs) within the palette."),

@@ -14,7 +14,7 @@ The image model draws; the scripts turn drawings into exact pixel grids and prov
 3. Reserve before you generate: `pack attempt` must succeed for EVERY image-tool call for that asset and px. Exit 2 means three attempts are used: stop generating that asset and read `references/qc.md`.
 4. Never delete candidates. Raws stay in `raw/`; rejected work stays on disk.
 5. One pack, one style: every asset in a pack uses the pack palette, light direction, outline rule, and view in pack.json.
-6. Show the user every result through the `@8x` preview (read the PNG), next to its references.
+6. Show native-size results and their integer nearest-neighbour `@8x` previews next to references. Reject beveled/embossed pixel tiles, per-pixel highlights, halos, blurred boundaries and within-cell gradients. A numeric PASS does not establish visual quality; distinguish viewer interpolation from defects in the actual PNG.
 
 ## 1. Pack and px - before any generation
 
@@ -42,17 +42,17 @@ Split the request into assets: name (slug), kind, px list, variants, references.
 
 1. `pack attempt DIR --name N --kind K --px P --prompt "<prompt>" [--reference FILE] [--variant-of BASE]` prints `OUTPUT`.
 2. `size WxH` for the logical canvas the reference file names; use its `GEN_SIZE`.
-3. If the image tool errors (e.g. 404, no provider), stop and tell the user it needs an image-capable OpenAI credential; never substitute code-drawn art. Otherwise call the image tool as the `gpt-image-gen` skill directs (`generate_image`, or the native `image_generation` tool when present) with that size, `output_path` = `OUTPUT`, `n` up to 4. Props, characters and effects go on a flat `#FF00FF` background. References go in `reference_image_paths` with their role stated in the prompt.
+3. Follow `gpt-image-gen` and prefer the native image tool actually available in the session. Native tools may save automatically under `generated-images/`: preserve that original and copy the returned file to the reserved `OUTPUT`; do not assume API-only arguments exist. Use `size`, `output_path`, `n` and `reference_image_paths` only when supported by the client `generate_image` surface. Display local reference images before native reference/edit calls. Props, characters and effects use a flat `#FF00FF` background. If generation fails, report the actual tool error; do not infer that a subscription needs an API key, silently change providers, or substitute code-drawn art.
 4. Several px values: generate the LARGEST first. After it is accepted, each smaller px is its own redraw with the accepted larger raw as reference and `--reference` on the reservation.
 
-Every prompt = the kind template from its reference + this pack line: `Pixel art for a 2D RPG Maker-style game, <view>, light from the <light>, <outline>, limited palette of about <asset_colors> colors<, palette hexes if the pack has them>, crisp square pixels, no anti-aliasing, no text, no watermark.`
+Every prompt = the kind template from its reference + this pack line: `Flat raster pixel art for a 2D RPG Maker-style game, <view>, light from the <light> on the depicted subject only, <outline>, limited palette of about <asset_colors> colors<, palette hexes if the pack has them>. Pixels are flat single-color samples, not physical blocks: no bevel, embossing, raised tiles, per-pixel lighting, glossy rims, halos, within-pixel gradients, antialiasing or blur. Hard grid-aligned color changes, no text, no watermark.`
 
 ## 4. Pixelize, check, accept
 
 1. `raw-check RAW --bg key` for key backgrounds (`--bg none` for opaque surfaces).
 2. `pixelize RAW --kind K --size WxH --pack DIR --out DIR/assets/<name>/<name>@<px>.png --scale 8` (the kind reference gives extra flags).
 3. `check FILE --kind K --size WxH --pack DIR` must print `RESULT: PASS`.
-4. Read the `@8x` PNG beside the references and earlier accepted assets: silhouette, readability at 1x, style match.
+4. Read the native PNG and `@8x` PNG beside the references and accepted assets: silhouette, readability at 1x, style match, flat color cells and hard edges. Do not judge a smoothly zoomed screenshot as the source PNG. If bevel-like shading remains across logical pixels, regenerate or repair the affected color clusters; palette quantization alone cannot remove that design.
 5. `pack accept DIR --name N --px P --raw RAW --file FILE`.
 
 A FAIL at any step: read `references/qc.md`.
