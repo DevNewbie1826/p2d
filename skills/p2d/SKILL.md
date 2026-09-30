@@ -27,7 +27,7 @@ The image model draws; the scripts turn drawings into exact pixel grids and prov
 
 ## 2. Plan
 
-Split the request into assets: name (slug), kind, px list, variants, references. Read ONLY the references that match:
+Split the request into assets: name (slug), kind, px list, variants, references. A user drawing, sketch or photo is the design authority: save it into the pack (`refs/`), open it, list its features in words (hair shape and direction, glasses shape, brows, nose, mouth, face outline, pose, proportions), pass it to every generation with `--ref` as image 1 (`image 1 is the user's design: keep every listed feature, shape and placement; only restyle it as pixel art`), and reject any result that drops, adds or reshapes a listed feature. If a user says an image is attached but you cannot see it, say so and ask for a file path before generating. Read ONLY the references that match:
 
 | The request involves | Read |
 |---|---|
