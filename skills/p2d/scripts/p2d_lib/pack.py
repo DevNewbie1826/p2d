@@ -2,11 +2,10 @@ from __future__ import annotations
 
 import argparse
 import os
-import platform
 from typing import Any, Callable, Dict, List, Optional, Tuple
 
 from . import color
-from .imageio import P2DError, emit, emit_result, load_rgba, parse_hex, parse_int_list, parse_size, read_json, to_hex, write_json
+from .imageio import P2DError, emit, load_rgba, parse_hex, parse_int_list, parse_size, read_json, to_hex, write_json
 
 SUPPORTED_PX = (16, 32, 48)
 MAX_ATTEMPTS = 3
@@ -62,28 +61,6 @@ def _asset_size_entry(data: Dict[str, Any], name: str, px: int) -> Dict[str, Any
     if asset is None:
         raise P2DError("asset %r is not in the pack; record an attempt first" % name)
     return asset.setdefault("sizes", {}).setdefault(str(px), {"attempts": [], "accepted": None})
-
-
-def cmd_doctor(_: argparse.Namespace) -> int:
-    reasons = []
-    emit("PYTHON", platform.python_version())
-    import sys
-
-    if sys.version_info < (3, 9):
-        reasons.append("python 3.9+ required")
-    try:
-        import PIL
-
-        emit("PILLOW", PIL.__version__)
-    except ImportError:
-        reasons.append("Pillow missing: python3 -m pip install --user pillow numpy")
-    try:
-        import numpy
-
-        emit("NUMPY", numpy.__version__)
-    except ImportError:
-        reasons.append("numpy missing: python3 -m pip install --user pillow numpy")
-    return emit_result(not reasons, reasons)
 
 
 def cmd_size(args: argparse.Namespace) -> int:
@@ -250,8 +227,6 @@ def cmd_palette(args: argparse.Namespace) -> int:
 
 
 def configure(name: str, parser: argparse.ArgumentParser) -> Callable[[argparse.Namespace], int]:
-    if name == "doctor":
-        return cmd_doctor
     if name == "size":
         parser.add_argument("logical", help="logical canvas WxH, e.g. 16x16, 16x48, 72x128")
         parser.add_argument("--target", type=int, default=1536, help="preferred longest edge (1024 for quick exploration)")

@@ -45,7 +45,7 @@ def _cluster(colors: Arr, threshold: float = 36.0) -> Arr:
             d = redmean_distance(c[None, :], np.array(centers))[0]
             j = int(d.argmin())
             if d[j] <= threshold:
-                total = weights[j] + counts[i]
+                total = weights[j] + float(counts[i])
                 centers[j] = (centers[j] * weights[j] + c * counts[i]) / total
                 weights[j] = total
                 continue

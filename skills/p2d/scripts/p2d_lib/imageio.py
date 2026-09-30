@@ -9,14 +9,14 @@ import numpy as np
 from numpy.typing import NDArray
 from PIL import Image
 
+from .errors import P2DError
+
 Img = NDArray[np.uint8]
 Arr = NDArray[Any]
 
 MAGENTA = (255, 0, 255)
 
 
-class P2DError(Exception):
-    pass
 
 
 def load_rgba(path: str) -> Img:

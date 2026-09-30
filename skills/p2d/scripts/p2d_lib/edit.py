@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import argparse
 import re
-from typing import Callable, List, Optional, Sequence, Tuple
+from typing import Any, Callable, List, Optional, Sequence, Tuple
 
 import numpy as np
 
@@ -39,8 +39,8 @@ def _check_pixel(x: int, y: int, width: int, height: int) -> None:
 
 def touch(
     rgba: Arr,
-    sets: Sequence[Sequence[object]],
-    clears: Sequence[Sequence[object]],
+    sets: Sequence[Sequence[Any]],
+    clears: Sequence[Sequence[Any]],
     palette: Optional[Sequence[object]] = None,
 ) -> Arr:
     src = np.asarray(rgba)

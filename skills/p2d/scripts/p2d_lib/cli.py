@@ -6,10 +6,10 @@ import importlib
 import sys
 from typing import List
 
-from .imageio import P2DError
+from .errors import P2DError
 
 COMMANDS = {
-    "doctor": ("pack", "Check python, Pillow and numpy are available."),
+    "doctor": ("doctor", "Check python, Pillow and numpy are available."),
     "size": ("pack", "Valid generate_image size for a logical canvas (e.g. 16x16)."),
     "pack": ("pack", "Create or update pack.json (px, palette, style lock, assets)."),
     "palette": ("pack", "Extract a palette (.hex) from existing pixel-art images."),
