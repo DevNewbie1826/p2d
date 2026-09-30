@@ -33,9 +33,9 @@ A seamless edge is not enough: laid out on a map, a tile with one big motif stam
 
 - Never frame the tile: no channel, crack, ripple or color band running along the border; no single big motif centred in the tile. Put features off-centre, crossing the edges at different points on each side.
 - Big-scale features are low contrast; strong contrast only on small accents.
-- When the material needs big features (lava pockets, wave cells, large stones), generate a seamless block of 2x2 tiles in one image (`--size` 2P x 2P, same prompt plus `a 2x2 tile block, features spread unevenly across it`), deliver it as `<name>-block@<P>.png`, and still check it with `--kind tile`.
+- REQUIRED for water, lava, grass, sand, snow and any material with big features (pockets, wave cells, large stones, tufts): generate a seamless block of 2x2 tiles in one image (`--size` 2P x 2P, same prompt plus `a 2x2 tile block, features spread unevenly across it`), deliver it as `<name>-block@<P>.png`, and still check it with `--kind tile`.
 - For large floors also make 1-2 variants (`--variant-of`) that swap feature positions, so the map can mix them.
-- Review `preview FILE --repeat 4 --unit <2P>` (close to 1x). If the tile grid or a repeating stamp is visible, it is a FAIL even when every check passes.
+- REQUIRED before `pack accept`: write `preview FILE --repeat 4 --unit <2P> --out DIR/previews/<name>@<P>-repeat.png`, open it and state in one line whether the tile grid or a repeating stamp is visible (features all pointing the same way, the same blob in every cell). Visible = FAIL even when every check passes; regenerate as a 2x2 block.
 
 Colors per tile: about 3-8 at 16, 4-12 at 32, 4-16 at 48. Smaller px = fewer, larger features, not the same pattern shrunk. Prompt: `<N>px <material> tile built from <budget> coherent connected <features> on a broad calm field; no random isolated pixels`.
 
