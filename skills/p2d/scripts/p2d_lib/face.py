@@ -4,12 +4,12 @@ from __future__ import annotations
 import argparse
 import os
 from itertools import combinations
-from typing import Callable, List, Tuple, TypedDict
+from typing import Callable, List, Sequence, Tuple, TypedDict
 
 import numpy as np
 from PIL import Image
 
-from .imageio import P2DError, emit, load_rgba, parse_hex, upscale
+from .imageio import P2DError, emit, load_rgba, parse_hex, save_rgba, upscale
 
 MIN_CONTRAST = 60
 MAX_SKIN_DISTANCE = 110
@@ -235,12 +235,82 @@ def detect_face(rgba: np.ndarray, skin_hint: Tuple[int, int] | None = None) -> F
     return {"skin": sample, "eyes": eyes, "reason": reason, "expected": expected}
 
 
+
+def _luma_of(c: Sequence[int]) -> float:
+    return 0.299 * c[0] + 0.587 * c[1] + 0.114 * c[2]
+
+
+def stamp_eyes(a: np.ndarray, detection: FaceDetection) -> Tuple[np.ndarray, int, int, int]:
+    """Redraw both front eyes with the measured RM2000 construction, palette-preserving.
+
+    Per eye (left eye shown, right eye mirrored): a dark lid pixel above the iris,
+    a 1x2 iris (dark over light) and a light sclera pixel on the outer side, at
+    x = centre -2 / +1 (two pixels apart), same top row for both eyes.
+    """
+    h, w = a.shape[:2]
+    if (w, h) != (24, 32):
+        raise P2DError("--stamp draws the RM2000 16px eye construction and needs a 24x32 frame, got %dx%d" % (w, h))
+    if detection["skin"] is None:
+        raise P2DError("--stamp needs a face region: %s" % detection["reason"])
+    sx, sy = detection["skin"]
+    skin = a[sy, sx, :3].astype(int)
+    opaque = a[..., 3] > 0
+    colours = np.unique(a[opaque][:, :3], axis=0)
+    lumas = np.array([_luma_of(c) for c in colours])
+    darkest = colours[int(np.argmin(lumas))]
+    candidates = [c for c in colours if _luma_of(c) < _luma_of(skin) - 60 and int(c[2]) > int(c[0])]
+    iris_light = max(candidates, key=_luma_of) if candidates else colours[int(np.argsort(lumas)[1])]
+    dark_blue = [c for c in candidates if _luma_of(c) < _luma_of(iris_light)]
+    iris_dark = min(dark_blue, key=_luma_of) if dark_blue else darkest
+    sclera = colours[int(np.argmax(lumas))]
+    eyes = detection["eyes"]
+    if len(eyes) == 2:
+        left, right = sorted(eyes, key=lambda g: min(x for x, _ in g))
+        top = min(y for g in eyes for _, y in g)
+        lx, rx = min(x for x, _ in left), max(x for x, _ in right)
+    else:
+        skin_mask = np.zeros((h, w), bool)
+        for y in range(h):
+            for x in range(w):
+                if opaque[y, x] and _skin_like(a[y, x], skin):
+                    skin_mask[y, x] = True
+        ys, xs = np.nonzero(skin_mask)
+        top = int(ys.min()) + max(1, (int(ys.max()) - int(ys.min())) // 3)
+        centre = (int(xs.min()) + int(xs.max()) + 1) // 2
+        lx, rx = centre - 2, centre + 1
+    out = a.copy()
+    iris_set = {tuple(int(v) for v in c) for c in candidates}
+    for g in eyes:
+        gx = [x for x, _ in g]
+        gy = [y for _, y in g]
+        for y in range(max(0, min(gy)), min(h, max(gy) + 3)):
+            for x in range(max(0, min(gx)), min(w, max(gx) + 1)):
+                if (x, y) in g or tuple(int(v) for v in out[y, x, :3]) in iris_set:
+                    out[y, x, :3] = skin
+    for x, side in ((lx, -1), (rx, 1)):
+        out[top - 1, x, :3] = darkest
+        out[top, x, :3] = iris_dark
+        out[top + 1, x, :3] = iris_light
+        out[top, x + side, :3] = skin
+        out[top + 1, x + side, :3] = sclera
+        out[top - 1:top + 2, x, 3] = 255
+        out[top:top + 2, x + side, 3] = 255
+    return out, lx, rx, top
+
+
 def cmd_face(args: argparse.Namespace) -> int:
     a = load_rgba(args.image).copy()
     if args.key:
         key = np.array(parse_hex(args.key), dtype=np.uint8)
         a[(a[..., :3] == key).all(axis=-1), 3] = 0
     h, w = a.shape[:2]
+    if getattr(args, "stamp", None):
+        detection = detect_face(a, _point(args.skin) if args.skin else None)
+        out, lx, rx, top = stamp_eyes(a, detection)
+        save_rgba(out, args.stamp)
+        emit("STAMPED", "%d %d %d -> %s" % (lx, rx, top, args.stamp))
+        emit("NEXT", "open the image, then run face --auto on it")
+        return 0
     auto = getattr(args, "auto", False)
     if not auto and (not args.eyes or not args.skin):
         raise P2DError("manual face mode requires --eyes and --skin")
@@ -301,6 +371,7 @@ def cmd_face(args: argparse.Namespace) -> int:
 
 def configure(name: str, parser: argparse.ArgumentParser) -> Callable[[argparse.Namespace], int]:
     parser.add_argument("image", help="finished character frame or face PNG")
+    parser.add_argument("--stamp", metavar="OUT", help="16px only: redraw both front eyes with the measured RM2000 construction (lid, 1x2 dark/light iris, outer sclera, identical pair) into OUT")
     parser.add_argument("--auto", action="store_true", help="detect skin and eyes without typing coordinates")
     parser.add_argument("--eyes", nargs="+", help="every eye pixel X,Y (1-based counting not used: 0,0 is top-left)")
     parser.add_argument("--skin", help="one face skin pixel X,Y (optional hint with --auto)")
