@@ -1,6 +1,8 @@
 from __future__ import annotations
 
 import argparse
+import copy
+import hashlib
 import os
 from typing import Any, Callable, Dict, List, Optional, Tuple
 
@@ -12,11 +14,37 @@ MAX_ATTEMPTS = 3
 GEN_MIN_PIXELS = 655360
 GEN_MAX_PIXELS = 8294400
 GEN_MAX_EDGE = 3840
-CHARACTER_FORMATS = {
-    "16": {"format": "rm2k", "frame": "24x32", "rows": "up,right,down,left", "engine": "RPG Maker 2000/2003"},
-    "32": {"format": "vxace", "frame": "32x32", "rows": "down,left,right,up", "engine": "RPG Maker VX/VX Ace"},
-    "48": {"format": "mv", "frame": "48x48", "rows": "down,left,right,up", "engine": "RPG Maker MV/MZ"},
+KIND_TABLE = {
+    "tile": {"pixelize_kind": "tile", "check_kind": "tile", "units": (1, 1), "anchor": "center", "margin": 0, "axis": "xy", "bg": "none"},
+    "wall": {"pixelize_kind": "wall", "check_kind": "wall", "units": (1, 3), "anchor": "center", "margin": 0, "axis": "x", "bg": "none"},
+    "trim": {"pixelize_kind": "trim", "check_kind": "trim", "units": (1.5, 0.5), "anchor": "center", "margin": 0, "axis": "x", "bg": "none"},
+    "prop": {"pixelize_kind": "prop", "check_kind": "prop", "units": (1, 1), "anchor": "bottom", "margin": 1, "axis": "none", "bg": "key"},
+    "character": {
+        "pixelize_kind": "prop", "check_kind": "frame", "anchor": "bottom", "margin": 1, "axis": "none", "bg": "key",
+        "formats": {
+            "16": {"format": "rm2k", "frame": "24x32", "rows": "up,right,down,left", "engine": "RPG Maker 2000/2003"},
+            "32": {"format": "vxace", "frame": "32x32", "rows": "down,left,right,up", "engine": "RPG Maker VX/VX Ace"},
+            "48": {"format": "mv", "frame": "48x48", "rows": "down,left,right,up", "engine": "RPG Maker MV/MZ"},
+        },
+    },
+    "animation": {"pixelize_kind": "prop", "check_kind": "frame", "units": (1, 1), "anchor": "bottom", "margin": 1, "axis": "none", "bg": "key"},
+    "fx": {"pixelize_kind": "prop", "check_kind": "frame", "units": (1, 1), "anchor": "center", "margin": 1, "axis": "none", "bg": "key"},
 }
+
+
+def kind_spec(kind: str, px: int, block: Optional[Tuple[int, int]] = None) -> Dict[str, Any]:
+    validate_px([px])
+    if kind not in KIND_TABLE:
+        raise P2DError("unknown asset kind %r" % kind)
+    spec = KIND_TABLE[kind]
+    if block is not None and min(block) <= 0:
+        raise P2DError("block dimensions must be positive")
+    if kind == "character":
+        size = spec["formats"][str(px)]["frame"]
+    else:
+        units = block if block is not None else spec["units"]
+        size = "%dx%d" % (int(px * units[0]), int(px * units[1]))
+    return {**{field: spec[field] for field in ("pixelize_kind", "check_kind", "anchor", "margin", "axis", "bg")}, "size": size}
 
 
 def pack_file(directory: str) -> str:
@@ -24,11 +52,54 @@ def pack_file(directory: str) -> str:
 
 
 def load_pack(directory: str) -> Dict[str, Any]:
-    return read_json(pack_file(directory))
+    data = read_json(pack_file(directory))
+    _pack_paths(data, lambda path: os.path.abspath(os.path.join(directory, path)))
+    _refresh_attempts(data)
+    return data
 
 
 def save_pack(directory: str, data: Dict[str, Any]) -> None:
-    write_json(pack_file(directory), data)
+    stored = copy.deepcopy(data)
+    stored["version"] = 2
+    _pack_paths(stored, lambda path: os.path.relpath(os.path.realpath(path), os.path.realpath(directory)))
+    write_json(pack_file(directory), stored)
+
+
+def _pack_paths(data: Dict[str, Any], convert: Callable[[str], str]) -> None:
+    """Convert only path-bearing fields, leaving prompts and metadata intact."""
+    for asset in data.get("assets", {}).values():
+        for entry in asset.get("sizes", {}).values():
+            records = [(attempt, ("output_prefix", "reference")) for attempt in entry.get("attempts", [])]
+            if entry.get("accepted"):
+                records.append((entry["accepted"], ("file", "raw")))
+            for record, fields in records:
+                for field in fields:
+                    if record.get(field):
+                        record[field] = convert(record[field])
+
+
+def _sha256(path: str) -> str:
+    with open(path, "rb") as stream:
+        digest = hashlib.sha256()
+        for chunk in iter(lambda: stream.read(65536), b""):
+            digest.update(chunk)
+    return digest.hexdigest()
+
+
+def _refresh_attempts(data: Dict[str, Any]) -> None:
+    """Discover generated raws without overriding explicit failed/rejected states."""
+    for asset in data.get("assets", {}).values():
+        for entry in asset.get("sizes", {}).values():
+            accepted = entry.get("accepted")
+            for attempt in entry.get("attempts", []):
+                raws = candidates({"attempts": [attempt]})
+                attempt.setdefault("status", "reserved")
+                if raws and attempt["status"] == "reserved":
+                    attempt["status"] = "generated"
+                if raws and "raw_sha256" not in attempt:
+                    attempt["raw_sha256"] = _sha256(raws[0])
+                if accepted and os.path.realpath(accepted["raw"]) in [os.path.realpath(p) for p in raws]:
+                    attempt["status"] = "accepted"
 
 
 def validate_px(values: List[int]) -> List[int]:
@@ -97,7 +168,7 @@ def cmd_pack(args: argparse.Namespace) -> int:
             "key": to_hex(parse_hex(args.key)),
             "palette": [],
             "style": {"view": args.view, "light": args.light, "outline": args.outline, "notes": args.notes or ""},
-            "character": CHARACTER_FORMATS,
+            "character": KIND_TABLE["character"]["formats"],
             "assets": {},
         }
         data["palette"] = _palette_from(args, args.max_colors)
@@ -110,6 +181,8 @@ def cmd_pack(args: argparse.Namespace) -> int:
     data = load_pack(args.dir)
     if action == "show":
         return _show(data)
+    if action == "status":
+        return _status(args.dir, data)
     if action == "set":
         if args.px:
             data["px"] = validate_px(parse_int_list(args.px))
@@ -139,13 +212,24 @@ def cmd_pack(args: argparse.Namespace) -> int:
 
 
 def attempt_prefix(directory: str, name: str, px: int, number: int) -> str:
-    return os.path.join(directory, "raw", "%s@%d_a%d" % (name, px, number))
+    return os.path.abspath(os.path.join(directory, "raw", "%s@%d_a%d" % (name, px, number)))
 
 
 def _attempt(args: argparse.Namespace, data: Dict[str, Any]) -> int:
     px = validate_px([args.px])[0]
+    reference = os.path.abspath(args.reference) if args.reference else None
+    if reference:
+        resolved = os.path.realpath(reference)
+        if not os.path.isfile(reference) or "@8x" in os.path.basename(resolved).lower() or "previews" in resolved.split(os.sep):
+            raise P2DError("--reference must exist and must not be an @8x preview or a file under previews/")
+    spec = kind_spec(args.kind, px, parse_size(args.block) if args.block else None)
+    size = "%dx%d" % parse_size(args.size) if args.size else spec["size"]
+    axis, bg = args.axis or spec["axis"], args.bg or spec["bg"]
+    if args.kind == "trim" and axis == "y" and not args.size and not args.block:
+        w, height = parse_size(size)
+        size = "%dx%d" % (height, w)
     assets = data.setdefault("assets", {})
-    asset = assets.setdefault(args.name, {"kind": args.kind, "axis": args.axis, "variant_of": args.variant_of, "sizes": {}})
+    asset = assets.setdefault(args.name, {"kind": args.kind, "axis": axis, "variant_of": args.variant_of, "sizes": {}})
     if asset.get("kind") != args.kind:
         raise P2DError("asset %r is a %s, not a %s" % (args.name, asset.get("kind"), args.kind))
     if args.axis and not asset.get("axis"):
@@ -153,20 +237,26 @@ def _attempt(args: argparse.Namespace, data: Dict[str, Any]) -> int:
     entry = asset.setdefault("sizes", {}).setdefault(str(px), {"attempts": [], "accepted": None})
     if entry["accepted"]:
         raise P2DError("%s@%d is already accepted (%s)" % (args.name, px, entry["accepted"]["file"]))
-    if len(entry["attempts"]) >= MAX_ATTEMPTS:
+    lost = next((a for a in reversed(entry["attempts"]) if a["status"] == "reserved" and not candidates({"attempts": [a]})), None) if args.reuse_lost else None
+    if lost is None and len(entry["attempts"]) >= MAX_ATTEMPTS:
         raise P2DError(
             "attempt limit reached (%d) for %s@%d: do not generate again; pick the best kept candidate or record a manual task"
             % (MAX_ATTEMPTS, args.name, px)
         )
-    number = len(entry["attempts"]) + 1
-    prefix = attempt_prefix(args.dir, args.name, px, number)
+    number = lost["attempt"] if lost is not None else len(entry["attempts"]) + 1
+    prefix = lost["output_prefix"] if lost is not None else attempt_prefix(args.dir, args.name, px, number)
     os.makedirs(os.path.dirname(prefix), exist_ok=True)
-    entry["attempts"].append({"attempt": number, "output_prefix": prefix, "reference": args.reference, "prompt": args.prompt})
+    record = {"attempt": number, "output_prefix": prefix, "reference": reference, "prompt": args.prompt,
+              "size": size, "axis": axis, "bg": bg, "status": "reserved"}
+    if lost is not None:
+        lost.update(record)
+    else:
+        entry["attempts"].append(record)
     save_pack(args.dir, data)
     emit("ASSET", args.name)
     emit("PX", px)
     emit("ATTEMPT", number)
-    emit("REMAINING", MAX_ATTEMPTS - number)
+    emit("REMAINING", MAX_ATTEMPTS - len(entry["attempts"]))
     emit("OUTPUT", prefix + ".png")
     return 0
 
@@ -177,36 +267,64 @@ def candidates(entry: Dict[str, Any]) -> List[str]:
         prefix = attempt["output_prefix"]
         folder, stem = os.path.dirname(prefix), os.path.basename(prefix)
         if os.path.isdir(folder):
-            found += sorted(os.path.join(folder, f) for f in os.listdir(folder) if f.startswith(stem))
+            found += sorted(os.path.join(folder, f) for f in os.listdir(folder)
+                            if f.startswith(stem) and f.lower().endswith(".png")
+                            and "@8x" not in f.lower() and os.path.isfile(os.path.join(folder, f)))
     return found
-
-
-CHARACTER_SIZES = {
-    16: ("24x32", "72x128", "288x256"),
-    32: ("32x32", "96x128", "384x256"),
-    48: ("48x48", "144x192", "576x384"),
-}
 
 
 def _accept(args: argparse.Namespace, data: Dict[str, Any]) -> int:
     px = validate_px([args.px])[0]
     entry = _asset_size_entry(data, args.name, px)
     raw = os.path.realpath(args.raw)
-    prefixes = [os.path.realpath(a["output_prefix"]) for a in entry["attempts"]]
-    if not os.path.exists(raw) or not any(raw.startswith(pfx) for pfx in prefixes):
+    chosen = next((a for a in entry["attempts"] if raw in [os.path.realpath(p) for p in candidates({"attempts": [a]})]), None)
+    if chosen is None:
         raise P2DError("%s is not a candidate of a reserved attempt for %s@%d" % (args.raw, args.name, px))
     if not os.path.exists(args.file):
         raise P2DError("processed file not found: %s" % args.file)
     if (data.get("assets") or {}).get(args.name, {}).get("kind") == "character":
-        allowed = CHARACTER_SIZES[px]
+        w, height = parse_size(kind_spec("character", px)["size"])
+        allowed = tuple("%dx%d" % (w * x, height * y) for x, y in ((1, 1), (3, 4), (12, 8)))
         rgba = load_rgba(args.file)
         size = "%dx%d" % (rgba.shape[1], rgba.shape[0])
         if size not in allowed:
             raise P2DError("character at %dpx must be %s (frame, block or sheet); got %s" % (px, " or ".join(allowed), size))
-    entry["accepted"] = {"file": args.file, "raw": args.raw}
+    chosen["status"] = "accepted"
+    chosen["raw_sha256"] = _sha256(raw)
+    entry["accepted"] = {"file": os.path.abspath(args.file), "raw": raw, "sha256": _sha256(args.file)}
     save_pack(args.dir, data)
     emit("ACCEPTED", "%s@%d -> %s" % (args.name, px, args.file))
     emit("CANDIDATES_KEPT", len(candidates(entry)))
+    return 0
+
+
+def _status(directory: str, data: Dict[str, Any]) -> int:
+    attention = False
+    accepted_files = set()
+    for name, asset in sorted(data.get("assets", {}).items()):
+        for px, entry in sorted(asset.get("sizes", {}).items(), key=lambda item: int(item[0])):
+            flags = []
+            for attempt in entry.get("attempts", []):
+                if attempt["status"] == "reserved" and not candidates({"attempts": [attempt]}):
+                    flags.append("RESERVED_NO_RAW(a%d)" % attempt["attempt"])
+            accepted = entry.get("accepted")
+            if accepted:
+                accepted_files.add(os.path.realpath(accepted["file"]))
+                if not os.path.isfile(accepted["file"]):
+                    flags.append("ACCEPTED_FILE_MISSING")
+                elif accepted.get("sha256") and _sha256(accepted["file"]) != accepted["sha256"]:
+                    flags.append("ACCEPTED_HASH_MISMATCH")
+            states = ",".join("a%d=%s" % (a["attempt"], a["status"]) for a in entry.get("attempts", []))
+            emit("ASSET", "%s@%s %s %s" % (name, px, states, " ".join(flags)))
+            attention |= bool(flags)
+    for folder, _, files in os.walk(os.path.join(directory, "assets")):
+        for filename in sorted(files):
+            path = os.path.join(folder, filename)
+            if filename.lower().endswith(".png") and "@8x" not in filename.lower() and os.path.realpath(path) not in accepted_files:
+                emit("UNTRACKED_ASSET_FILE", os.path.relpath(path, directory))
+                attention = True
+    save_pack(directory, data)
+    emit("RESULT", "ATTENTION" if attention else "OK")
     return 0
 
 
@@ -266,6 +384,8 @@ def configure(name: str, parser: argparse.ArgumentParser) -> Callable[[argparse.
     init.add_argument("--force", action="store_true")
     show = sub.add_parser("show", help="print pack state")
     show.add_argument("dir")
+    status = sub.add_parser("status", help="reconcile attempts and report missing, changed or untracked files")
+    status.add_argument("dir")
     setp = sub.add_parser("set", help="update px or style fields")
     setp.add_argument("dir")
     setp.add_argument("--px")
@@ -288,6 +408,11 @@ def configure(name: str, parser: argparse.ArgumentParser) -> Callable[[argparse.
     att.add_argument("--variant-of", help="base asset name when this is a variant")
     att.add_argument("--axis", choices=["x", "y", "xy", "none"], default=None, help="repeat axis for tile/wall/trim")
     att.add_argument("--prompt", help="prompt text used (reproducibility)")
+    shape = att.add_mutually_exclusive_group()
+    shape.add_argument("--size", help="logical canvas WxH")
+    shape.add_argument("--block", help="canvas in tile units, e.g. 2x2")
+    att.add_argument("--bg", choices=["key", "alpha", "none"], help="background mode (default from kind)")
+    att.add_argument("--reuse-lost", action="store_true", help="reuse the newest reserved attempt without a raw")
     acc = sub.add_parser("accept", help="mark the chosen candidate and its processed file")
     acc.add_argument("dir")
     acc.add_argument("--name", required=True)

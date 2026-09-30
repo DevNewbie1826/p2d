@@ -49,3 +49,9 @@ DIR/previews/pack.png                 reference-style overview
 ```
 
 Finish with `p2d.py preview DIR/assets/*/*.png --out DIR/previews/pack.png` and, when the game wants one image, `p2d.py atlas DIR/assets/*/*@<px>.png --out DIR/assets/atlas@<px>.png`.
+
+## Attempt settings and lifecycle
+
+`pack attempt` records logical `size`, repeat `axis` and background mode `bg` (override with `--size WxH`, `--block NxM`, `--axis x|y|xy|none`, `--bg key|alpha|none`; `--size` and `--block` are exclusive). Defaults: tile PxP axis xy; wall Px3P axis x; horizontal trim 1.5P x 0.5P axis x (`--axis y` for vertical); prop PxP key background; character 24x32 / 32x32 / 48x48 at 16 / 32 / 48.
+
+pack.json version 2 stores paths relative to the pack dir, so a pack can be moved and resumed by another session. Attempts go reserved -> generated (raw exists) -> accepted; accept records the file's sha256. `p2d.py pack status DIR` reports RESERVED_NO_RAW (a lost generation), UNTRACKED_ASSET_FILE, ACCEPTED_FILE_MISSING, ACCEPTED_HASH_MISMATCH and ends with RESULT: OK or ATTENTION: run it when you resume a pack and before you report. `pack attempt ... --reuse-lost` reuses a reserved attempt that has no raw instead of spending a new slot. References must exist and must not be @8x previews or files under previews/.
