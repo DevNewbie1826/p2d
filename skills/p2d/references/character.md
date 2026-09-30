@@ -22,7 +22,7 @@ The frame is not the drawing: a character rarely fills its cell, and a small siz
 
 What survives each step down: silhouette, dominant color masses, face/visor placement, the one identity cue (hat peak, bow gap, shield, blade), handedness. Drop first: trim, rivets, stitching, secondary straps, fletching, tiny folds. Widen a gap that must read (bow, arm) to at least 1 real pixel. Outline: dark contour colored per material is usual; pure black is optional; boot soles and tips may meet transparency.
 
-Walking: feet on the same bottom row in every frame, head bob at most 1px, legs and arms redrawn (not the body shifted sideways).
+Eye gate at every px: both eyes (one in side view) are visible pixels of the eye color, not covered by hair, helmet shadow or outline; if hair covers the eyes, reject and redraw or `touch` them back. Walking: feet on the same bottom row in every frame, head bob at most 1px, legs and arms redrawn (not the body shifted sideways).
 
 Three columns per row: step A, standing, step B. Walking plays stand, A, stand, B. A `!` prefix (charset `--object`) is for objects that should sit on the grid without the upward offset.
 

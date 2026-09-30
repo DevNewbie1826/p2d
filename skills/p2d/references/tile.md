@@ -22,7 +22,7 @@ A tile is a few connected features on a calm field, never evenly scattered singl
 
 | Material | 16 | 32 | 48 | Rule |
 |---|---|---|---|---|
-| Water | 1-3 connected ripple/crest groups or a quiet flat field | 2-4 ripple groups or cells | 3-6 groups + subordinate arcs | light pixels belong to crests; no white confetti, no black ripple outlines |
+| Water | 2-3 stepped ripple contours, each a connected line of 3+ pixels | 3-5 ripple contours or wave cells | 4-6 contours + subordinate arcs | the ripple family is visible at 1x; a plain field with a couple of dashes is a FAIL unless the user asked for still water; light pixels belong to crests; no white confetti, no black ripple outlines |
 | Lava | 1-2 dark cooling pockets split by a connected hot path | 2-4 pockets, 1-2 branching channels | 3-6 pockets + eddies | yellow only inside the hottest channel; emissive, no top-left stone highlight |
 | Grass (walkable) | calm base + 0-3 connected tufts/notches | 3-6 low-contrast clumps | 6-10 tuft groups | yellow-green tips, darker roots; no square sprinkles |
 | Stone / cobble | 2-4 masses | 3-6 masses, 1-2 cracks | 4-8 masses + chips | one crack network; no bright rim around every stone |

@@ -17,8 +17,10 @@ p2d.py pack attempt DIR --name <name> --kind <kind> --px <small> --reference <ac
 ```
 
 ```
-Image 1 is the approved <W>x<H> version of this <asset>. Redraw the same <asset> as a <w>x<h> pixel-art <kind> for the same game: same design, materials, colors and lighting, simplified for the smaller grid (fewer and bigger details, clear silhouette), each pixel a crisp square block. <background rule of the kind>.
+Image 1 is the approved <W>x<H> version of this <asset>. Redraw the same <asset> as a <w>x<h> pixel-art <kind> for the same game: same design, materials, colors and lighting, the same <N> major <features> in the same places (merge only the smallest), simplified for the smaller grid (fewer and bigger details, clear silhouette), each pixel a crisp square block. <background rule of the kind>.
 ```
+
+Before writing it, count the major features (pockets, ripples, stones, planes) in the accepted larger version and name that number. After pixelizing, read both sizes side by side: if the smaller one no longer reads as the same design (different layout, a feature gone or invented), it is a FAIL even when `check` passes.
 
 Pass the accepted larger raw with `--ref`. Pixelize with the smaller `--size`, check, accept.
 
