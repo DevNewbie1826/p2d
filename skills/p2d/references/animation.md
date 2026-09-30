@@ -35,6 +35,7 @@ Image 1 is the approved character. Draw a <N>-frame <action> animation of exactl
 The displayed anchor guide fixes cell centers, standing body scale and feet baselines. Change only the poses, never zoom individual frames or fill the empty margins.
 Exactly <N> equal cells in <rows> rows and <cols> columns, read left to right, top to bottom: <frame 1: anticipation>, <frame 2: ...>, ..., <last: recovery>.
 Body only: no slash arc, trail, spark, projectile, dust or impact effect.
+For fixed-cell sword attacks, use a short blade, bent elbows and a compact chop beside the torso; no lunge or extended thrust. Keep the blade below the top of the head and the total pose width below standing character height.
 Same body size in every cell, <grounded actions: feet on the same line in every cell>, the whole body and weapon inside the central 70% of each cell, nothing crosses a cell edge, no lines between cells.
 RPG Maker style JRPG sprite, chibi proportions, each pixel a crisp square block, <pack line>. Flat solid #FF00FF magenta background.
 ```
@@ -46,6 +47,8 @@ p2d.py frames RAW --rows R --cols C --frame WxH --subject-height <subject_height
 ```
 
 Grounded actions (idle, attack, cast, hurt) must pass strict QC. Jumps, knockback, death and anything whose silhouette changes on purpose add `--loose`, then are judged visually. `--profile` reuses the exact raw-pixel pitch and is only valid for a raw with the same canvas size and grid as the profiled one.
+
+`scale_cv` measures the entire opaque silhouette, including weapons; it is not a body/anatomy detector. Inspect head, torso and limb thickness before diagnosing a failure. For the default compact attack, regenerate with the weapon inside the common silhouette envelope. If the user explicitly wants overhead swings or lunges, preserve that action and use a documented action-specific review rather than pretending the generic numeric gate measures anatomy.
 
 If equal cuts intersect intact figures separated by empty background bands, inspect the raw and try `--layout whitespace`. Missing or ambiguous separators must remain failures. If a blade widens the pose beyond the delivery frame, request a more compact pose or an explicitly wider delivery frame without shrinking only that action's body. Do not use `--loose` merely to make a failed attack pass.
 
