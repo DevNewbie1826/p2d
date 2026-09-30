@@ -58,8 +58,7 @@ class GenTest(unittest.TestCase):
     def marker(self, suffix=".gen.json"):
         return json.loads(Path(str(self.prefix) + suffix).read_text())
 
-    def test_success_writes_raw_marker_and_does_not_change_pack(self):
-        before = (self.directory / "pack.json").read_bytes()
+    def test_success_writes_raw_marker_and_consumes_reservation(self):
         code, out, err = self.run_gen()
         self.assertEqual(code, 0, err)
         raw = Path(str(self.prefix) + ".png")
@@ -73,7 +72,10 @@ class GenTest(unittest.TestCase):
         self.assertEqual(Path(marker["prompt_file"]).read_text(), "stored prompt")
         self.assertEqual(marker["runtime"]["requested_size"], "1024x1024")
         self.assertEqual(marker["refs"], [])
-        self.assertEqual((self.directory / "pack.json").read_bytes(), before)
+        attempt = json.loads((self.directory / "pack.json").read_text())[
+            "assets"]["crate"]["sizes"]["16"]["attempts"][0]
+        self.assertEqual(attempt["status"], "generated")
+        self.assertEqual(attempt["runtime_calls"], 1)
 
     def test_selects_newest_unfilled_attempt_with_absolute_prefix(self):
         attempts = self.pack["assets"]["crate"]["sizes"]["16"]["attempts"]
@@ -100,18 +102,17 @@ class GenTest(unittest.TestCase):
 
     def test_auto_uses_logical_aspect_and_explicit_size_overrides(self):
         attempt = self.pack["assets"]["crate"]["sizes"]["16"]["attempts"][0]
-        for logical, expected in (("32x16", "1536x1024"), ("16x32", "1024x1536"),
-                                  ("16x16", "1024x1024")):
+        for index, (logical, expected, extra) in enumerate((
+                ("32x16", "1536x1024", ()), ("16x32", "1024x1536", ()),
+                ("16x16", "1024x1024", ()), ("16x16", "1536x1024", ("--size", "1536x1024")))):
             with self.subTest(logical=logical):
+                self.prefix = self.directory / "raw" / ("aspect-%d" % index)
+                attempt["output_prefix"] = str(self.prefix)
                 attempt["size"] = logical
                 self.write_pack()
-                code, _, err = self.run_gen()
+                code, _, err = self.run_gen(*extra)
                 self.assertEqual(code, 0, err)
                 self.assertEqual(self.marker()["runtime"]["requested_size"], expected)
-                Path(str(self.prefix) + ".png").unlink()
-        code, _, err = self.run_gen("--size", "1536x1024")
-        self.assertEqual(code, 0, err)
-        self.assertEqual(self.marker()["runtime"]["requested_size"], "1536x1024")
 
     def test_prompt_file_refs_mask_and_quality_are_forwarded(self):
         prompt = self.directory / "override.txt"
@@ -126,37 +127,85 @@ class GenTest(unittest.TestCase):
         self.assertEqual(marker["runtime"]["mask"], "mask.png")
         self.assertEqual(marker["runtime"]["quality"], "high")
 
-    def test_five_failures_limit_and_same_slot_retry(self):
+    def test_three_failed_calls_consume_distinct_attempts_and_stop(self):
         self.stub.write_text("import sys\nprint('outage', file=sys.stderr)\nsys.exit(7)\n")
-        for count in range(1, 6):
+        for count in range(1, 4):
             code, out, err = self.run_gen()
             self.assertEqual(code, 1, err)
             self.assertEqual(h.kv(out)["RESULT"], "FAIL")
-            self.assertEqual(self.marker(".failed.json")["exit_code"], 7)
-            self.assertEqual(self.marker(".failed.json")["failures"], count)
+            prefix = self.directory / "raw" / ("crate@16_a%d" % count)
+            marker = json.loads(Path(str(prefix) + ".failed.json").read_text())
+            self.assertEqual(marker["exit_code"], 7)
+            self.assertEqual(marker["failures"], 1)
+        attempts = json.loads((self.directory / "pack.json").read_text())[
+            "assets"]["crate"]["sizes"]["16"]["attempts"]
+        self.assertEqual(len(attempts), 3)
+        self.assertEqual([a["status"] for a in attempts], ["failed"] * 3)
         self.stub.write_text(STUB)
         code, _, err = self.run_gen()
         self.assertEqual(code, 2, err)
-        self.assertIn("report", err.lower())
+        self.assertIn("call limit", err.lower())
+        self.assertIn("--max-calls", err)
         self.assertFalse(Path(str(self.prefix) + ".png").exists())
+        self.assertFalse((self.directory / "raw" / "crate@16_a4.png").exists())
 
-    def test_failed_partial_output_can_retry_without_new_slot(self):
+    def test_failed_partial_output_and_marker_survive_new_slot_retry(self):
         self.stub.write_text(STUB + "\nraise SystemExit(7)\n")
         code, _, err = self.run_gen()
         self.assertEqual(code, 1, err)
         self.stub.write_text(STUB)
-        code, _, err = self.run_gen()
+        code, out, err = self.run_gen()
         self.assertEqual(code, 0, err)
         self.assertTrue(Path(str(self.prefix) + ".failed-1.png").exists())
+        self.assertTrue(Path(str(self.prefix) + ".failed.json").exists())
+        self.assertEqual(h.kv(out)["RAW"], str(self.directory / "raw" / "crate@16_a2.png"))
+        self.assertFalse(Path(str(self.prefix) + ".png").exists())
+
+    def test_explicit_max_calls_allows_fourth_call_and_preserves_settings(self):
+        attempt = self.pack["assets"]["crate"]["sizes"]["16"]["attempts"][0]
+        attempt.update(size="96x32", frame="48x32", master=False,
+                       axis="none", bg="alpha", reference=None)
+        self.write_pack()
+        self.stub.write_text("raise SystemExit(7)\n")
+        for _ in range(3):
+            self.assertEqual(self.run_gen()[0], 1)
+        self.stub.write_text(STUB)
+        code, out, err = self.run_gen("--max-calls", "4")
+        self.assertEqual(code, 0, out + err)
+        self.assertTrue((self.directory / "raw" / "crate@16_a4.png").exists())
+        attempts = json.loads((self.directory / "pack.json").read_text())[
+            "assets"]["crate"]["sizes"]["16"]["attempts"]
+        self.assertEqual(len(attempts), 4)
+        for record in attempts:
+            self.assertEqual((record["size"], record["frame"], record["bg"]),
+                             ("96x32", "48x32", "alpha"))
+            self.assertEqual(record["runtime_calls"], 1)
+
+    def test_consumed_attempt_cannot_be_reused_after_files_are_removed(self):
+        code, _, err = self.run_gen()
+        self.assertEqual(code, 0, err)
+        Path(str(self.prefix) + ".png").unlink()
+        Path(str(self.prefix) + ".gen.json").unlink()
+        code, _, err = self.run_gen()
+        self.assertEqual(code, 2, err)
+        self.assertFalse(Path(str(self.prefix) + ".png").exists())
+
+    def test_nonpositive_max_calls_rejects_before_runtime(self):
+        for limit in ("0", "-1"):
+            code, _, err = self.run_gen("--max-calls", limit)
+            self.assertEqual(code, 2, err)
+            self.assertIn("positive", err)
+        self.assertFalse(Path(str(self.prefix) + ".gen.json").exists())
 
     def test_invalid_json_or_missing_png_is_failure(self):
-        for stub in ("print('{}')", STUB + "\nprint('not JSON')"):
+        for count, stub in enumerate(("print('{}')", STUB + "\nprint('not JSON')"), 1):
             with self.subTest(stub=stub):
                 self.stub.write_text(stub)
                 code, out, err = self.run_gen()
                 self.assertEqual(code, 1, err)
                 self.assertEqual(h.kv(out)["RESULT"], "FAIL")
-                self.assertTrue(self.marker(".failed.json")["error"])
+                prefix = self.directory / "raw" / ("crate@16_a%d" % count)
+                self.assertTrue(json.loads(Path(str(prefix) + ".failed.json").read_text())["error"])
 
     def test_timeout_writes_failure_marker_without_timing_luck(self):
         from p2d_lib import cli

@@ -45,8 +45,8 @@ def kind_spec(kind: str, px: int, block: Optional[Tuple[int, int]] = None) -> Di
     spec = KIND_TABLE[kind]
     if block is not None and min(block) <= 0:
         raise P2DError("block dimensions must be positive")
-    if kind == "character":
-        size = spec["formats"][str(px)]["frame"]
+    if kind == "character" or (kind == "animation" and block is None):
+        size = KIND_TABLE["character"]["formats"][str(px)]["frame"]
     else:
         units = block if block is not None else spec["units"]
         size = "%dx%d" % (int(px * units[0]), int(px * units[1]))
@@ -229,6 +229,8 @@ def attempt_prefix(directory: str, name: str, px: int, number: int) -> str:
 
 
 def _attempt(args: argparse.Namespace, data: Dict[str, Any]) -> int:
+    if args.max_calls <= 0:
+        raise P2DError("--max-calls must be positive")
     px = validate_px([args.px])[0]
     reference = os.path.abspath(args.reference) if args.reference else None
     if reference:
@@ -236,7 +238,14 @@ def _attempt(args: argparse.Namespace, data: Dict[str, Any]) -> int:
         if not os.path.isfile(reference) or "@8x" in os.path.basename(resolved).lower() or "previews" in resolved.split(os.sep):
             raise P2DError("--reference must exist and must not be an @8x preview or a file under previews/")
     spec = kind_spec(args.kind, px, parse_size(args.block) if args.block else None)
+    if args.master and args.kind != "character":
+        raise P2DError("--master is only supported for character")
+    if args.frame and args.kind not in ("animation", "fx"):
+        raise P2DError("--frame is only supported for animation/fx")
+    frame = "%dx%d" % parse_size(args.frame) if args.frame else kind_spec(args.kind, px)["size"]
     size = "%dx%d" % parse_size(args.size) if args.size else spec["size"]
+    if args.frame and not args.size and not args.block:
+        size = frame
     axis, bg = args.axis or spec["axis"], args.bg or spec["bg"]
     if args.kind == "trim" and axis == "y" and not args.size and not args.block:
         w, height = parse_size(size)
@@ -251,16 +260,21 @@ def _attempt(args: argparse.Namespace, data: Dict[str, Any]) -> int:
     if entry["accepted"]:
         raise P2DError("%s@%d is already accepted (%s)" % (args.name, px, entry["accepted"]["file"]))
     lost = next((a for a in reversed(entry["attempts"]) if a["status"] == "reserved" and not candidates({"attempts": [a]})), None) if args.reuse_lost else None
-    if lost is None and len(entry["attempts"]) >= MAX_ATTEMPTS:
+    if lost is None and len(entry["attempts"]) >= args.max_calls:
         raise P2DError(
-            "attempt limit reached (%d) for %s@%d: do not generate again; pick the best kept candidate or record a manual task"
-            % (MAX_ATTEMPTS, args.name, px)
+            "attempt limit reached (%d) for %s@%d: do not generate again; pick the best kept candidate "
+            "or use --max-calls N only with explicit user consent"
+            % (args.max_calls, args.name, px)
         )
     number = lost["attempt"] if lost is not None else len(entry["attempts"]) + 1
     prefix = lost["output_prefix"] if lost is not None else attempt_prefix(args.dir, args.name, px, number)
     os.makedirs(os.path.dirname(prefix), exist_ok=True)
     record = {"attempt": number, "output_prefix": prefix, "reference": reference, "prompt": args.prompt,
               "size": size, "axis": axis, "bg": bg, "status": "reserved"}
+    if args.kind in ("animation", "fx"):
+        record["frame"] = frame
+    if args.master:
+        record["master"] = True
     if lost is not None:
         lost.update(record)
     else:
@@ -269,7 +283,7 @@ def _attempt(args: argparse.Namespace, data: Dict[str, Any]) -> int:
     emit("ASSET", args.name)
     emit("PX", px)
     emit("ATTEMPT", number)
-    emit("REMAINING", MAX_ATTEMPTS - len(entry["attempts"]))
+    emit("REMAINING", max(0, args.max_calls - len(entry["attempts"])))
     emit("OUTPUT", prefix + ".png")
     return 0
 
@@ -314,6 +328,7 @@ def _accept(args: argparse.Namespace, data: Dict[str, Any]) -> int:
     checks.configure("check", parser)
     check_args = parser.parse_args([args.file, "--kind", spec["check_kind"], "--size", size,
                                    "--pack", args.dir, "--axis", chosen.get("axis", asset.get("axis") or spec["axis"])])
+    check_args.master = chosen.get("master", False)
     output = io.StringIO()
     with redirect_stdout(output):
         code = checks.cmd_check(check_args)
@@ -323,16 +338,17 @@ def _accept(args: argparse.Namespace, data: Dict[str, Any]) -> int:
     cells = 0
     if kind == "animation":
         rgba = load_rgba(args.file)
-        rows, cols = rgba.shape[0] // px, rgba.shape[1] // px
-        if (rows * px, cols * px) != rgba.shape[:2]:
-            raise P2DError("animation atlas %dx%d is not a grid of %dx%d frames" % (rgba.shape[1], rgba.shape[0], px, px))
+        fw, fh = parse_size(chosen.get("frame", spec["size"]))
+        rows, cols = rgba.shape[0] // fh, rgba.shape[1] // fw
+        if (rows * fh, cols * fw) != rgba.shape[:2]:
+            raise P2DError("animation atlas %dx%d is not a grid of %dx%d frames" % (rgba.shape[1], rgba.shape[0], fw, fh))
         bad = []
         with tempfile.TemporaryDirectory(prefix="p2d-cells-") as tmp:
             for r in range(rows):
                 for c in range(cols):
                     cell = os.path.join(tmp, "r%dc%d.png" % (r, c))
-                    Image.fromarray(rgba[r * px:(r + 1) * px, c * px:(c + 1) * px]).save(cell)
-                    cell_args = parser.parse_args([cell, "--kind", "frame", "--size", "%dx%d" % (px, px), "--pack", args.dir])
+                    Image.fromarray(rgba[r * fh:(r + 1) * fh, c * fw:(c + 1) * fw]).save(cell)
+                    cell_args = parser.parse_args([cell, "--kind", "frame", "--size", "%dx%d" % (fw, fh), "--pack", args.dir])
                     cell_out = io.StringIO()
                     with redirect_stdout(cell_out):
                         cell_code = checks.cmd_check(cell_args)
@@ -378,6 +394,9 @@ def _accept(args: argparse.Namespace, data: Dict[str, Any]) -> int:
         if results != ["RESULT: PASS"] or len(crops) != 1 or not re.fullmatch(
                 re.escape(stem) + r"-face@[1-9][0-9]*x\.png", os.path.abspath(crops[0])):
             raise P2DError("face report must contain RESULT: PASS and the default CROP for this exact file")
+        hashes = [line[len("IMAGE_SHA256: "):].strip() for line in lines if line.startswith("IMAGE_SHA256: ")]
+        if hashes != [accepted["sha256"]]:
+            raise P2DError("face report image hash does not match the file being accepted; rerun face")
         if not args.face_report:
             with open(report_path, "w", encoding="utf-8") as stream:
                 stream.write(report)
@@ -514,8 +533,12 @@ def configure(name: str, parser: argparse.ArgumentParser) -> Callable[[argparse.
     shape = att.add_mutually_exclusive_group()
     shape.add_argument("--size", help="logical canvas WxH")
     shape.add_argument("--block", help="canvas in tile units, e.g. 2x2")
+    att.add_argument("--frame", help="animation/fx cell WxH, separate from atlas --size (animation default: character frame)")
+    att.add_argument("--master", action="store_true", help="reserve a front-idle character master, including proportion QC")
     att.add_argument("--bg", choices=["key", "alpha", "none"], help="background mode (default from kind)")
     att.add_argument("--reuse-lost", action="store_true", help="reuse the newest reserved attempt without a raw")
+    att.add_argument("--max-calls", type=int, default=MAX_ATTEMPTS,
+                     help="reservation cap per asset/px (default 3); raising it requires explicit user consent")
     acc = sub.add_parser("accept", help="mark the chosen candidate and its processed file")
     acc.add_argument("dir")
     acc.add_argument("--name", required=True)

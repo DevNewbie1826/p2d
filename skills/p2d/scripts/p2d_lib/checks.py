@@ -183,6 +183,8 @@ def cluster_stats(rgba: Arr) -> Tuple[float, float]:
 
 
 def cmd_check(args: argparse.Namespace) -> int:
+    if args.master and args.kind != "frame":
+        raise P2DError("--master is only supported for frame")
     if args.outline_colors is not None and args.kind not in CUTOUT:
         raise P2DError("--outline-colors is only supported for prop/frame")
     rgba = load_rgba(args.image)
@@ -237,7 +239,7 @@ def cmd_check(args: argparse.Namespace) -> int:
                     emit("SEAM_%s_EDGE_REVIEW" % name.upper(), "opposite edges identical: check the 4x4 repeat for a copied edge")
         if ratio > args.seam_max:
             reasons.append("SEAM_%s %.4f too high" % (name.upper(), ratio))
-    if args.kind == "frame" and (width, height) == (24, 32):
+    if args.master and (width, height) == (24, 32):
         ys, xs = np.nonzero(rgba[..., 3] > 0)
         if len(xs):
             ratio_wh = (xs.max() - xs.min() + 1) / float(ys.max() - ys.min() + 1)
@@ -297,6 +299,7 @@ def configure(name: str, parser: argparse.ArgumentParser) -> Callable[[argparse.
     parser.add_argument("image")
     parser.add_argument("--kind", required=True, choices=list(KINDS))
     parser.add_argument("--size", required=True, help="expected size WxH")
+    parser.add_argument("--master", action="store_true", help="front-idle character master: enforce chibi proportions")
     parser.add_argument("--pack", help="pack directory: palette, asset color cap and key")
     parser.add_argument("--max-colors", type=int, default=None, help="color cap (default: pack asset_colors or 16)")
     parser.add_argument(

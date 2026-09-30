@@ -1,4 +1,4 @@
-"""Generate a reserved raw without changing the pack's attempt ledger."""
+"""Generate one raw per reservation, including a fresh reservation on retry."""
 from __future__ import annotations
 
 import argparse
@@ -13,35 +13,56 @@ from typing import Callable
 
 from PIL import Image
 
+from . import pack
 from .imageio import P2DError, emit, emit_result, parse_size, read_json, write_json
 
 
 def cmd_gen(args: argparse.Namespace) -> int:
+    if args.max_calls <= 0:
+        raise P2DError("--max-calls must be positive")
+    if args.timeout <= 0:
+        raise P2DError("--timeout must be positive")
     directory = Path(args.dir).absolute()
-    data = read_json(str(directory / "pack.json"))
-    attempts = data.get("assets", {}).get(args.name, {}).get("sizes", {}).get(
+    data = pack.load_pack(str(directory))
+    entry = data.get("assets", {}).get(args.name, {}).get("sizes", {}).get(
         str(args.px), {}
-    ).get("attempts", [])
-    attempt = None
-    prefix = None
-    for candidate in reversed(attempts):
-        prefix = Path(candidate["output_prefix"])
-        if not prefix.is_absolute():
-            prefix = directory / prefix
-        if not Path(str(prefix) + ".png").exists():
-            attempt = candidate
-            break
-    if attempt is None or prefix is None:
+    )
+    attempts = entry.get("attempts", [])
+    if entry.get("accepted"):
+        raise P2DError("%s@%d is already accepted" % (args.name, args.px))
+    for candidate in attempts:
+        prefix = candidate["output_prefix"]
+        failed = prefix + ".failed.json"
+        if Path(failed).exists():
+            candidate.setdefault("runtime_calls", read_json(failed).get("failures", 1))
+            candidate["status"] = "failed"
+        else:
+            candidate.setdefault("runtime_calls", int(
+                candidate["status"] != "reserved" or Path(prefix + ".gen.json").exists()))
+    calls = sum(candidate["runtime_calls"] for candidate in attempts)
+    if calls >= args.max_calls:
+        raise P2DError("generation call limit reached (%d) for %s@%d; stop and report the outage "
+                       "or use --max-calls N only with explicit user consent"
+                       % (args.max_calls, args.name, args.px))
+    attempt = next((candidate for candidate in reversed(attempts)
+                    if candidate["status"] == "reserved" and not candidate["runtime_calls"]
+                    and not pack.candidates({"attempts": [candidate]})), None)
+    if attempt is None and attempts and attempts[-1]["status"] == "failed":
+        number = len(attempts) + 1
+        attempt = {key: value for key, value in attempts[-1].items()
+                   if key not in ("attempt", "output_prefix", "status", "runtime_calls", "raw_sha256")}
+        attempt.update(attempt=number, output_prefix=pack.attempt_prefix(
+            str(directory), args.name, args.px, number), status="reserved", runtime_calls=0)
+        attempts.append(attempt)
+        pack.save_pack(str(directory), data)
+        emit("ATTEMPT", number)
+    if attempt is None:
         raise P2DError("no reserved attempt without a raw for %s@%d" % (args.name, args.px))
 
+    prefix = Path(attempt["output_prefix"])
     raw = Path(str(prefix) + ".png")
     marker = str(prefix) + ".gen.json"
     failed = str(prefix) + ".failed.json"
-    failures = read_json(failed).get("failures", 1) if Path(failed).exists() else 0
-    if failures >= 5:
-        raise P2DError("five failures for this attempt; report the outage before generating again")
-    if args.timeout <= 0:
-        raise P2DError("--timeout must be positive")
     size = args.size
     if size == "auto":
         w, h = parse_size(attempt.get("size") or "1x1")
@@ -69,6 +90,9 @@ def cmd_gen(args: argparse.Namespace) -> int:
             command += ["--ref", ref]
         if args.mask:
             command += ["--mask", args.mask]
+        attempt["status"] = "generating"
+        attempt["runtime_calls"] = 1
+        pack.save_pack(str(directory), data)
         proc = subprocess.run(command, capture_output=True, text=True,
                               stdin=subprocess.DEVNULL, timeout=args.timeout)
         exit_code = proc.returncode
@@ -92,14 +116,18 @@ def cmd_gen(args: argparse.Namespace) -> int:
             "runtime": result,
         })
     except (OSError, ValueError, P2DError, subprocess.TimeoutExpired) as exc:
-        failures += 1
-        # Keep partial candidates, but free the reserved raw path for a retry.
+        # Keep partial candidates and markers; retries use a new reservation.
         if raw.exists():
-            raw.rename(str(prefix) + ".failed-%d.png" % failures)
-        write_json(failed, {"error": str(exc), "exit_code": exit_code, "failures": failures})
+            raw.rename(str(prefix) + ".failed-1.png")
+        write_json(failed, {"error": str(exc), "exit_code": exit_code, "failures": 1})
+        attempt["status"] = "failed"
+        pack.save_pack(str(directory), data)
         emit("ERROR", str(exc))
         emit("MARKER", failed)
         return emit_result(False)
+    attempt["status"] = "generated"
+    attempt["raw_sha256"] = hashlib.sha256(raw.read_bytes()).hexdigest()
+    pack.save_pack(str(directory), data)
     emit("RAW", str(raw))
     emit("MARKER", marker)
     return emit_result(True)
@@ -117,4 +145,6 @@ def configure(name: str, parser: argparse.ArgumentParser) -> Callable[[argparse.
     parser.add_argument("--quality", choices=["high"], default="high")
     parser.add_argument("--runner", help="override runtime command (e.g. a test stub)")
     parser.add_argument("--timeout", type=float, default=600)
+    parser.add_argument("--max-calls", type=int, default=pack.MAX_ATTEMPTS,
+                        help="call cap per asset/px (default 3); raising it requires explicit user consent")
     return cmd_gen
