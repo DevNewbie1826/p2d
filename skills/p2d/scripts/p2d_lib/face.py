@@ -558,6 +558,17 @@ def _face_span(a: np.ndarray, detection: FaceDetection, ey: int) -> Tuple[int, i
     return min(x for x, _ in region), max(x for x, _ in region)
 
 
+def _front_shifts(parts: List[Tuple[Part, bool]], gap: int) -> List[float]:
+    """Place the normal inner iris columns symmetrically around the face centre."""
+    shifts = []
+    for index, (part, flip) in enumerate(parts):
+        cols = [float(-part["at"][0] - col if flip else part["at"][0] + col)
+                for line in part["grid"] for col, role in enumerate(line) if role in "di"]
+        shifts.append((-(gap + 1) / 2 - max(cols)) if index == 0 else
+                      ((gap + 1) / 2 - min(cols)))
+    return shifts
+
+
 def stamp_parts(a: np.ndarray, detection: FaceDetection, library: PartsLibrary,
                 expr: str, mouth: str, brows: str | None, facing: str,
                 eye_colors: List[Tuple[int, int, int]] | None = None,
@@ -616,17 +627,7 @@ def stamp_parts(a: np.ndarray, detection: FaceDetection, library: PartsLibrary,
                 if eye_gap is not None:
                     raise P2DError("--eye-gap parity must match FACE_W for a symmetric pair")
                 gap = gap - 1 if gap > 1 else gap + 1
-            left = normal_parts[0][0]
-            iris_cols = [col for line in left["grid"] for col, role in enumerate(line)
-                         if role in "di"]
-            inner = float(left["at"][0] + max(iris_cols))
-            shifts[0] = -(gap + 1) / 2 - inner
-            right, flip = normal_parts[1]
-            iris_cols = [col for line in right["grid"] for col, role in enumerate(line)
-                         if role in "di"]
-            inner = min(-right["at"][0] - col if flip else right["at"][0] + col
-                        for col in iris_cols)
-            shifts[1] = (gap + 1) / 2 - inner
+            shifts = _front_shifts(normal_parts, gap)
             if expr in ("normal", "closed", "happy", "surprised", "eat"):
                 eyes = {**eyes, "right": "mirror"}
                 shifts[1] = -shifts[0]
@@ -763,6 +764,85 @@ def stamp_parts(a: np.ndarray, detection: FaceDetection, library: PartsLibrary,
     return out, facing, clipped, ramp, gap, face_w
 
 
+def _expression_pair(a: np.ndarray, detection: FaceDetection,
+                     args: argparse.Namespace) -> FaceDetection:
+    """Read both open eyes at one shared stamped anchor, not nearby helmet pixels."""
+    if detection["skin"] is None:
+        return detection
+    library = _load_parts(a, args)
+    facing, _, ey = _face_anchor(a, detection, args.facing)
+    config = library["facings"].get(facing)
+    if not isinstance(config, dict) or args.expr not in config.get("eyes", {}):
+        return detection
+    parts = _parts_for(config["eyes"][args.expr])
+    if len(parts) != 2 or not all(
+            any(role in "diwh" for line in part["grid"] for role in line)
+            for part, _ in parts):
+        return detection
+    _, cx, _ = _face_anchor(a, detection, facing, config.get("anchor", ""))
+    spacing = library.get("spacing")
+    dynamic = spacing is not None and not args.expr.startswith("normal-")
+    gaps = [args.eye_gap] if args.eye_gap is not None else (
+        list(range(spacing["front"]["min"], spacing["front"]["max"] + 1))
+        if dynamic and spacing is not None else [0])
+    centres = [cx]
+    if dynamic:
+        x0, x1 = _face_span(a, detection, ey)
+        measured = (x0 + x1) / 2
+        if abs(measured - cx) == .5:
+            centres.append(measured)
+    layouts = []
+    for centre, gap in ((centre, gap) for centre in centres for gap in gaps):
+        shifts = _front_shifts(_parts_for(config["eyes"]["normal"]), gap) if dynamic else [0., 0.]
+        eyes: EyeParts = config["eyes"][args.expr]
+        if dynamic and args.expr in ("normal", "closed", "happy", "surprised", "eat"):
+            eyes = {**eyes, "right": "mirror"}
+            shifts[1] = -shifts[0]
+        layouts.append([
+            [(int(np.floor(centre + (-part["at"][0] - col if flip else part["at"][0] + col)
+                           + shifts[index] + .5)), int(part["at"][1]) + y, role)
+             for y, line in enumerate(part["grid"]) for col, role in enumerate(line)
+             if role in "diwh"]
+            for index, (part, flip) in enumerate(_parts_for(eyes))])
+    sx, sy = detection["skin"]
+    skin = a[sy, sx, :3].astype(int)
+    height = max(len(part["grid"]) for part, _ in parts)
+    # A lid or scar can move the heuristic's top row. Require every eye role
+    # to match at a single row: searching each eye separately would hide shifts.
+    anchors = sorted(range(max(0, ey - height), min(a.shape[0], ey + height + 1)),
+                     key=lambda y: (abs(y - ey), y))
+    for row, layout in ((row, layout) for row in anchors for layout in layouts):
+        regions = [[(x, row + y, role) for x, y, role in region] for region in layout]
+        samples: dict[str, List[Tuple[int, int, int]]] = {}
+        valid = True
+        for region in regions:
+            for x, y, role in region:
+                if not (0 <= x < a.shape[1] and 0 <= y < a.shape[0]) or not a[y, x, 3]:
+                    valid = False
+                    break
+                pixel = a[y, x]
+                if role in "wh":
+                    valid = valid and _eye_white(pixel, skin, a.shape[1] == 32)
+                else:
+                    valid = valid and not _skin_like(pixel, skin) and not _eye_white(
+                        pixel, skin, a.shape[1] == 32)
+                    if role == "d":
+                        valid = valid and _luma(skin) - _luma(pixel) >= MIN_CONTRAST
+                samples.setdefault(role, []).append((int(pixel[0]), int(pixel[1]), int(pixel[2])))
+        # Stamping uses one ramp for both sides. A misplaced pixel must not be
+        # replaced by a differently coloured lid, scar or helmet highlight.
+        if valid and all(len(set(values)) == 1 for values in samples.values()):
+            groups = [[(x, y) for x, y, role in region if role in "di"]
+                      or [(x, y) for x, y, _ in region] for region in regions]
+            return {**detection, "eyes": groups, "reason": ""}
+    # Recorded source variants can keep occluded pixels rather than overwrite
+    # them (for example normal-alex under a helmet). Keep the heuristic gate
+    # for those, including its original asymmetry and skin checks.
+    if args.expr.startswith("normal-"):
+        return detection
+    return {**detection, "reason": "eye regions do not match expression %s at a shared anchor" % args.expr}
+
+
 def cmd_face(args: argparse.Namespace) -> int:
     a = load_rgba(args.image).copy()
     if args.key:
@@ -835,6 +915,11 @@ def cmd_face(args: argparse.Namespace) -> int:
     if auto and args.eyes:
         raise P2DError("--auto cannot be combined with --eyes")
     detection = detect_face(a, _point(args.skin) if args.skin else None) if auto else None
+    expression_pair = False
+    if detection is not None and getattr(args, "expr", None):
+        original = detection
+        detection = _expression_pair(a, detection, args)
+        expression_pair = detection is not original and not detection["reason"]
     if detection is not None:
         emit("SKIN", "%d,%d" % detection["skin"] if detection["skin"] is not None else "none")
         emit("EYE_CANDIDATES", " | ".join(" ".join("%d,%d" % p for p in g) for g in detection["eyes"]) or "none")
@@ -895,7 +980,7 @@ def cmd_face(args: argparse.Namespace) -> int:
     for i, group in enumerate(groups, 1):
         if closed_sides == 2 or open_sides == 0:
             continue
-        problems = _judge(a, skin, group, eye_set, len(groups) > 1)
+        problems = [] if expression_pair else _judge(a, skin, group, eye_set, len(groups) > 1)
         label = " ".join("%d,%d" % p for p in group)
         emit("EYE_%d" % i, "%s %s" % (label, "PASS" if not problems else "FAIL " + "; ".join(problems)))
         if problems:
@@ -909,7 +994,8 @@ def cmd_face(args: argparse.Namespace) -> int:
             tops.append(top)
         right_width = max(x for x, _ in shapes[1])
         mirrored = {(right_width - x, y) for x, y in shapes[1]}
-        if (shapes[0] != shapes[1] and shapes[0] != mirrored) or tops[0] != tops[1]:
+        if not expression_pair and (
+                (shapes[0] != shapes[1] and shapes[0] != mirrored) or tops[0] != tops[1]):
             emit("EYE_PAIR", "FAIL front eyes differ in shape/height")
             failures.append("front eyes differ in shape/height")
         else:

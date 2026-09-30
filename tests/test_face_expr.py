@@ -201,6 +201,40 @@ def sample():
 
 
 class FaceExpressionTest(unittest.TestCase):
+    def test_knight_all_front_expressions_pass_auto_with_same_expression(self):
+        with open(os.path.join(LIBRARIES, "16.json")) as f:
+            expressions = json.load(f)["facings"]["front"]["eyes"]
+        src = os.path.join(FIX, "knight-r7-16.png")
+        for expr in expressions:
+            with self.subTest(expr=expr):
+                out = os.path.join(h.tmp(), expr + ".png")
+                code, text, err = h.run_cli("face", src, "--stamp", out, "--expr", expr)
+                self.assertEqual(code, 0, text + err)
+                code, text, err = h.run_cli("face", out, "--auto", "--expr", expr)
+                self.assertEqual(code, 0, text + err)
+                self.assertEqual(h.kv(text)["RESULT"], "PASS")
+
+    def test_knight_shifted_eye_fails_auto_with_expression(self):
+        for expr, (dx, dy) in ((expr, shift) for expr in ("normal", "sad", "scar-l")
+                              for shift in ((0, 1), (1, 0))):
+            with self.subTest(expr=expr, shift=(dx, dy)):
+                out = os.path.join(h.tmp(), expr + ".png")
+                code, text, err = h.run_cli(
+                    "face", os.path.join(FIX, "knight-r7-16.png"),
+                    "--stamp", out, "--expr", expr)
+                self.assertEqual(code, 0, text + err)
+                a = h.load(out)
+                # Shift the complete right iris one pixel, leaving skin behind.
+                iris = (a[..., :3] == (4, 36, 82)).all(axis=-1)
+                ys, xs = np.where(iris & (np.indices(iris.shape)[1] > 12))
+                pixels = a[ys, xs].copy()
+                a[ys, xs] = (252, 205, 150, 255)
+                a[ys + dy, xs + dx] = pixels
+                h.save(a, out)
+                code, text, err = h.run_cli("face", out, "--auto", "--expr", expr)
+                self.assertEqual(code, 1, text + err)
+                self.assertEqual(h.kv(text)["RESULT"], "FAIL")
+
     def test_32_dense_stamped_eyes_pass_auto_on_narrow_and_wide_eggs(self):
         for width in (13, 22):
             for color in ("blue", "#3FA0FF", "#FFD020"):
