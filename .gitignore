@@ -1,0 +1,6 @@
+__pycache__/
+*.pyc
+p2d-out/
+.omo/evidence/
+.omo/ulw-*
+.DS_Store
