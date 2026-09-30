@@ -20,6 +20,10 @@ function parseArgs(argv) {
   const args = { ref: [] };
   for (let i = 0; i < argv.length; i++) {
     const a = argv[i];
+    if (a === "--help" || a === "-h") {
+      process.stdout.write("usage: gen_image.mjs --prompt-file FILE | --prompt TEXT --out OUT.png [--size 1024x1024|1536x1024|1024x1536] [--quality high] [--ref FILE ...] [--mask MASK.png] [--model M] [--effort E] [--auth PATH]\n");
+      process.exit(0);
+    }
     if (!a.startsWith("--")) throw new Error(`Unexpected argument: ${a}`);
     const key = a.slice(2);
     const val = argv[i + 1];
