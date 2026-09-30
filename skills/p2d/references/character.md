@@ -48,7 +48,7 @@ Flat solid #FF00FF magenta background everywhere, no shadow, no floor, no text.
 
 ```
 p2d.py pixelize RAW --kind prop --size <frame> --anchor bottom --margin 1 --pack DIR --out DIR/work/<char>/master@<P>.png --scale 8
-p2d.py face DIR/work/<char>/master@<P>.png --eyes <every eye-core X,Y> --skin <face-skin X,Y> --scale 8
+p2d.py face DIR/work/<char>/master@<P>.png --auto --scale 8
 ```
 
 Immediately after pixelizing every master, run `face`, open its `CROP`, and require every `EYE_n` and `RESULT` to PASS before approval. Use the coordinate and repair rules in step 4.
@@ -88,6 +88,9 @@ Inspect the raw first if equal-cell cuts report clipped figures. When every figu
 ### 4. Face check and repair
 
 REQUIRED after every master pixelization and walk-frame cut: run `face` on the master and one down, left and right frame, list every dark iris/pupil pixel (both pixels of a 1x2 core, both front eyes), and choose an actual face-skin pixel. Coordinates are native frame pixels, 0-based, not preview coordinates. White/pale sclera is not listed as an eye core; it counts as face around the eye. Each eye (a connected group of listed pixels) needs face (skin tone or sclera) on 2 sides per eye pixel, or 1 per pixel for a single side-view eye; all 24 front/side idle frames of the measured RM2000 charset pass, a knight whose eyes sit in hair fails. For an opaque sheet pass its background with `--key`:
+
+Use automatic detection for every required face gate; do not type coordinates: `p2d.py face FRAME --auto --scale 8` (add `--key HEX` for an opaque sheet). It prints SKIN, EYE_CANDIDATES, EYE_n, EYE_PAIR, CROP and RESULT. Every EYE_n, EYE_PAIR (front eyes identical in size, shape and top row) and RESULT must PASS. On FAIL open the CROP and the HINT (suggested eye positions): redraw, or repair with `touch` within the palette, rerun `face --auto` and reopen the crop. Manual `--eyes/--skin` is for diagnosis only.
+
 
 ```
 p2d.py face FRAME --eyes <X,Y X,Y ...> --skin <X,Y> --scale 8
