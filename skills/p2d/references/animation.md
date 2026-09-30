@@ -65,4 +65,4 @@ p2d.py gif DIR/work/<char>/<action>@P/r0c0.png DIR/work/<char>/<action>@P/r0c1.p
 p2d.py atlas DIR/work/<char>/<action>@P/r*.png --cols C --out DIR/assets/<char>/<char>-<action>@P.png
 ```
 
-Read the GIF's frames (or the atlas at `@8x` via `preview`) before accepting: the body must not grow or shrink, feet must not slide on grounded actions.
+Read the GIF's frames (or the atlas at `@8x` via `preview`) before accepting: the body must not grow or shrink, feet must not slide on grounded actions. `pack accept` checks every PxP cell of an animation atlas as a frame and rejects the atlas if any cell fails (e.g. `r1c0: frame touches left edge`): pull the pose inside the cell or regenerate; never crop the weapon to pass.

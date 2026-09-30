@@ -6,8 +6,11 @@ import hashlib
 import io
 import os
 import re
+import tempfile
 from contextlib import redirect_stdout
 from typing import Any, Callable, Dict, List, Optional, Tuple
+
+from PIL import Image
 
 from . import color
 from .imageio import P2DError, emit, load_rgba, parse_hex, parse_int_list, parse_size, read_json, to_hex, write_json
@@ -317,11 +320,35 @@ def _accept(args: argparse.Namespace, data: Dict[str, Any]) -> int:
     fields = [line.split(": ", 1) for line in output.getvalue().splitlines() if ": " in line]
     if code:
         raise P2DError("check fails: %s" % "; ".join(value for key, value in fields if key == "FAIL_REASON"))
+    cells = 0
+    if kind == "animation":
+        rgba = load_rgba(args.file)
+        rows, cols = rgba.shape[0] // px, rgba.shape[1] // px
+        if (rows * px, cols * px) != rgba.shape[:2]:
+            raise P2DError("animation atlas %dx%d is not a grid of %dx%d frames" % (rgba.shape[1], rgba.shape[0], px, px))
+        bad = []
+        with tempfile.TemporaryDirectory(prefix="p2d-cells-") as tmp:
+            for r in range(rows):
+                for c in range(cols):
+                    cell = os.path.join(tmp, "r%dc%d.png" % (r, c))
+                    Image.fromarray(rgba[r * px:(r + 1) * px, c * px:(c + 1) * px]).save(cell)
+                    cell_args = parser.parse_args([cell, "--kind", "frame", "--size", "%dx%d" % (px, px), "--pack", args.dir])
+                    cell_out = io.StringIO()
+                    with redirect_stdout(cell_out):
+                        cell_code = checks.cmd_check(cell_args)
+                    if cell_code:
+                        reasons = [line.split(": ", 1)[1] for line in cell_out.getvalue().splitlines() if line.startswith("FAIL_REASON: ")]
+                        bad.append("r%dc%d: %s" % (r, c, "; ".join(reasons)))
+                    cells += 1
+        if bad:
+            raise P2DError("frame check fails: %s" % " | ".join(bad))
     metric_names = {"SIZE", "COLORS", "OUT_OF_PALETTE", "ALPHA_BINARY", "KEY_RESIDUE",
                     "TRANSPARENT_PERCENT", "SEAM_X", "SEAM_Y", "EDGE_TOUCH",
                     "SINGLETON_PERCENT", "MEAN_CLUSTER", "NOISE_REVIEW"}
     accepted = {"file": os.path.abspath(args.file), "raw": raw, "sha256": _sha256(args.file),
                 "qc": {"result": "PASS", "metrics": {key: value for key, value in fields if key in metric_names}}}
+    if cells:
+        accepted["qc"]["cells"] = cells
     if args.no_face is not None:
         if not args.no_face.strip():
             raise P2DError("--no-face needs a nonempty reason")
