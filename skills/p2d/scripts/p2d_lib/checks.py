@@ -251,6 +251,11 @@ def cmd_check(args: argparse.Namespace) -> int:
     if limits is not None:
         flagged = singleton_percent > limits[0] or mean_cluster < limits[1]
         emit("NOISE_REVIEW", "yes (singleton > %.0f%% or cluster < %.2f)" % limits if flagged else "no")
+        if flagged and args.kind in SURFACE and not args.allow_noise:
+            reasons.append(
+                "NOISE: scattered isolated pixels for a %s of this px (singleton %.1f%%, cluster %.2f)"
+                % (args.kind, singleton_percent, mean_cluster)
+            )
     return emit_result(not reasons, reasons)
 
 
@@ -272,6 +277,11 @@ def configure(name: str, parser: argparse.ArgumentParser) -> Callable[[argparse.
         type=float,
         default=None,
         help="fail when more than this percent of opaque pixels have no same-color 4-neighbor (speckle noise)",
+    )
+    parser.add_argument(
+        "--allow-noise",
+        action="store_true",
+        help="tile/wall/trim: do not fail on NOISE_REVIEW (only for a deliberately dithered or dense style the user asked for)",
     )
     parser.add_argument("--key", default=None, help="key color (default: pack key or #ff00ff)")
     parser.add_argument("--allow-opaque", action="store_true", help="allow a prop or frame with no transparent pixels")

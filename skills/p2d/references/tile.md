@@ -40,7 +40,7 @@ p2d.py check DIR/assets/<name>/<name>@<P>.png --kind tile --size PxP --pack DIR
 p2d.py preview DIR/assets/<name>/<name>@<P>.png --repeat 3 --out DIR/previews/<name>@<P>-repeat.png
 ```
 
-`check` measures seams in x and y (`SEAM_X`, `SEAM_Y`) and speckle (`NOISE_REVIEW: yes` = scattered isolated pixels for a tile of this px; redraw with the feature budget unless the singles are deliberate). Read the 3x3 repeat preview: a visible grid, a line, or a repeated blotch at the tile border is a failure even when the numbers pass.
+`check` measures seams in x and y (`SEAM_X`, `SEAM_Y`) and speckle (`NOISE` FAIL = scattered isolated pixels for a tile of this px: redraw with fewer, larger connected features). Read the 3x3 repeat preview: a visible grid, a line, or a repeated blotch at the tile border is a failure even when the numbers pass.
 
 ## Fixing a seam (offset and repaint)
 

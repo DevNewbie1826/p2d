@@ -54,7 +54,7 @@ Every prompt = the kind template from its reference + this pack line: `Flat rast
 
 1. Inspect the actual file, not only the requested background. For props/characters/effects, run `inspect RAW`: genuine alpha transparency uses `raw-check RAW --bg alpha` and `--bg alpha` consistently in `pixelize`/`frames`; an opaque flat key background uses `--bg key`. Do not regenerate a valid transparent PNG merely because magenta was requested. Painted checkerboards are not transparency. Opaque tile/wall/trim surfaces use `--bg none`.
 2. `pixelize RAW --kind K --size WxH --pack DIR --out DIR/assets/<name>/<name>@<px>.png --scale 8` (the kind reference gives extra flags).
-3. `check FILE --kind K --size WxH --pack DIR` must print `RESULT: PASS`; `NOISE_REVIEW: yes` means inspect for scattered speckle before accepting (qc.md).
+3. `check FILE --kind K --size WxH --pack DIR` must print `RESULT: PASS`; tiles, walls and trims FAIL on scattered speckle (`NOISE`); props and frames print `NOISE_REVIEW: yes` for you to inspect (qc.md).
 4. Read the native PNG and `@8x` PNG beside the references and accepted assets: silhouette, readability at 1x, style match, flat color cells and hard edges. Do not judge a smoothly zoomed screenshot as the source PNG. If bevel-like shading remains across logical pixels, regenerate or repair the affected color clusters; palette quantization alone cannot remove that design.
 5. `pack accept DIR --name N --px P --raw RAW --file FILE`.
 
