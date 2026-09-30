@@ -37,7 +37,7 @@ A seamless edge is not enough: laid out on a map, a tile with one big motif stam
 - For large floors also make 1-2 variants (`--variant-of`) that swap feature positions, so the map can mix them.
 - REQUIRED before `pack accept`: write `preview FILE --repeat 4 --unit <2P> --out DIR/previews/<name>@<P>-repeat.png`, open it and state in one line whether the tile grid or a repeating stamp is visible (features all pointing the same way, the same blob in every cell). Visible = FAIL even when every check passes; regenerate as a 2x2 block.
 
-Colors per tile: about 3-8 at 16, 4-12 at 32, 4-16 at 48. Smaller px = fewer, larger features, not the same pattern shrunk. Prompt: `<N>px <material> tile built from <budget> coherent connected <features> on a broad calm field; no random isolated pixels`.
+Colors per tile: about 3-8 at 16, 4-12 at 32, 4-16 at 48. Smaller px = fewer, larger features, not the same pattern shrunk. At 16 the same features must still read: water keeps continuous wave lines (not scattered dots), lava keeps crust plates separated by glowing cracks (not a checker of 3-colour blocks); name the 2-4 features of the accepted larger tile in the 16 prompt and reject a 16 whose features cannot be pointed to in the sizes preview. Prompt: `<N>px <material> tile built from <budget> coherent connected <features> on a broad calm field; no random isolated pixels`.
 
 Background is opaque: skip the key color. With a reference tile, say `image 1 is the style reference: match its palette, pixel density and shading`.
 
