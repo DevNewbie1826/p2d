@@ -18,7 +18,7 @@ The frame is not the drawing: a character rarely fills its cell, and a small siz
 
 | px | Goal | Subject in frame | Head | Eyes | Colors / frame | Shading |
 |---|---|---|---|---|---|---|
-| 16 | silhouette, readable face, connected masses | usually 14-20 x 23-28; measured 12-22 x 22-29 in 24x32 | front idle 10-15px including headgear, 43-54% | each iris 1x2 dark/light + pale blue/white sclera; front two, side one, back none | front idle 19-28; all frames 14-31; character union 22-32 (raise `--asset-colors` and pack palette limit for this style) | skin 3; hair usually 3-6 (gold hair up to 8); cloth 3-6; silver metal 4-6, tiny buckle 2, red armor 7; no random texture |
+| 16 | silhouette, readable face, connected masses | new masters about 16 x 23-24, width 0.65-0.70 of height; measured 12-22 x 22-29 in 24x32 | front idle 10-15px including headgear, 43-54% | each iris 1x2 dark/light + pale blue/white sclera; front two, side one, back none | front idle 19-28; all frames 14-31; character union 22-32 (raise `--asset-colors` and pack palette limit for this style) | skin 3; hair usually 3-6 (gold hair up to 8); cloth 3-6; silver metal 4-6, tiny buckle 2, red armor 7; no random texture |
 | 32 | proportion, expression, pose | about 20-29 x 27-32 | 55-60% for chibi | about 3x5 incl. lid, 1x2 pupil | 12-16 (PIPOYA-rich style 24-40: raise `--asset-colors`) | base, shadow, light per major material |
 | 48 | material, individuality, animation-ready | about 22-35 x 40-47 | 45-60% | about 5x4: dark upper lid, white, 2-3px iris | 12-16 economical; rich styles 40+ (raise `--asset-colors`) | 3-5 bands; metal = narrow bright band + dark facet, cloth = broad folds, hair = highlights along locks |
 
@@ -28,7 +28,7 @@ What survives each step down: silhouette, dominant color masses, face/visor plac
 
 16px outline/shading: mostly 1px contours, brown `#290800`/skin `#621300`, navy `#00084A`/`#10186A`, gray or black per material; selected shoulder metal, hair tips, hat trim and cloth edges can meet the key without a dark enclosure. Continuous-outline packs still require enclosure. Skin commonly uses `#BF643D`, `#EE9C7B`, `#F9C19D`; hair and cloth have connected highlight bands, metal narrow bright bands. The eight front-idle frames have 31-52% same-color 4-neighbour singletons (9-28% with 8-neighbours): useful eye/trim/highlight pixels are not automatically noise.
 
-Eye gate at every px applies to front/side, not the back: both eyes (one in side view) must be visible, not covered by hair, helmet shadow or outline; reject/redraw or `touch` on failure. Walking: stable foot baseline, head bob at most 1px, legs and arms redrawn (not the body shifted sideways). At 16px A/B heads and eyes are 1px below standing; foot tips may vary 0-1px (measured bottom y30-31). Alternate legs and opposing arms; redraw sleeves, hem, trailing hair and cloak as needed. Side views narrow the face/body and show one eye, nose/cheek edge and overlapping limbs, not a squashed front; wide hats may retain their width. Back views replace the face with hair/headgear and back clothing. Mirror only genuinely symmetric designs.
+Eye gate at every px applies to front/side, not the back: both eyes (one in side view) must be visible, not covered by hair, helmet shadow or outline; reject/redraw or `touch` on failure. 16px build for new masters (measured from the user's RM2000 reference): stocky, not lanky. Subject about 16 x 23-24, width about 0.65-0.70 of height, head about half, short legs, oversized hands and boots, saturated distinct material masses inside a dark contour. A user-approved master keeps its own scale. Walking: stable foot baseline, head pixel-identical across a direction's frames except a bob of at most 1px (enforced by `headlock`), legs and arms redrawn (not the body shifted sideways). At 16px A/B heads and eyes are 1px below standing; foot tips may vary 0-1px (measured bottom y30-31). Alternate legs and opposing arms; redraw sleeves, hem, trailing hair and cloak as needed. Side views narrow the face/body and show one eye, nose/cheek edge and overlapping limbs, not a squashed front; wide hats may retain their width. Back views replace the face with hair/headgear and back clothing. Mirror only genuinely symmetric designs.
 
 Three columns per row: step A, standing, step B. Walking plays stand, A, stand, B. A `!` prefix (charset `--object`) is for objects that should sit on the grid without the upward offset.
 
@@ -39,7 +39,7 @@ Three columns per row: step A, standing, step B. Walking plays stand, A, stand, 
 Reserve `pack attempt DIR --name <char>-master --kind character --px P --master --prompt "..."`, then generate with `size <frame>`:
 
 ```
-An RPG Maker style JRPG overworld character sprite of <who: outfit, hair, colors, props>, facing the viewer (front view with a slight top-down tilt), standing still, full body, chibi proportions with <head/eyes/colors/shading from the budget row for P>. <16: "native 24x32 frame for 16px tiles, subject about 14-20 x 23-28px (wide headgear up to 22px), head including headgear about half the subject height, about 19-28 colors; two readable 1x2 dark/light irises with pale blue/white sclera and visible skin, short dark upper lids, nose/mouth implied by skin; 1px material-colored selective contour, skin 3 tones, connected hair/cloth highlights and narrow metal light bands, no random texture"; 32: "one expression cue and a deliberate stance"; 48: "materials told apart by highlight shape, one personal asymmetry">.
+An RPG Maker style JRPG overworld character sprite of <who: outfit, hair, colors, props>, facing the viewer (front view with a slight top-down tilt), standing still, full body, chibi proportions with <head/eyes/colors/shading from the budget row for P>. <16: "native 24x32 frame for 16px tiles, stocky RM2000 build, subject about 16 x 23-24px (width about 0.65-0.70 of height; wide headgear up to 22px), head including headgear about half the subject height, short legs, oversized hands and boots, saturated distinct material masses, about 19-28 colors; two readable 1x2 dark/light irises with pale blue/white sclera and visible skin, short dark upper lids, nose/mouth implied by skin; 1px material-colored selective contour, skin 3 tones, connected hair/cloth highlights and narrow metal light bands, no random texture"; 32: "one expression cue and a deliberate stance"; 48: "materials told apart by highlight shape, one personal asymmetry">.
 Exactly one character, centred, whole body inside the image with a clear magenta margin on every side.
 Designed as a <frame W>x<frame H> pixel grid: each pixel a flat single-color sample. Use the pack's outline convention and light direction. If the outline is continuous, hair tips, face colors and equipment remain enclosed by it; no exposed interior colors at silhouette gaps.
 Flat solid #FF00FF magenta background everywhere, no shadow, no floor, no text.
@@ -56,7 +56,7 @@ Immediately after pixelizing every master, run `face`, open its `CROP`, and requ
 
 `--master` applies the 16px width/height proportion gate only to front-idle masters; plain frame checks for side, back and walking poses do not impose that front-view budget. `pack accept` carries the reserved master flag into QC.
 
-`<H>` is the measured opaque height, not the frame height: 16 -> 26 (RM2K 23-28), 32 -> 30 (PIPOYA 27-32), 48 -> 44 (40-47). Never let the character fill the whole frame. `--protect-auto` keeps small eye cores and strong highlights through palette reduction (see `PROTECTED:`); add `--protect HEX` for any other identity colour. `pack accept` runs the face gate on the accepted file itself.
+`<H>` is the measured opaque height, not the frame height: 16 -> 24 (RM2K 23-28; a user-approved master keeps its own scale), 32 -> 30 (PIPOYA 27-32), 48 -> 44 (40-47). Never let the character fill the whole frame. `--protect-auto` keeps small eye cores and strong highlights through palette reduction (see `PROTECTED:`); add `--protect HEX` for any other identity colour. `pack accept` runs the face gate on the accepted file itself.
 
 ### 2. Approval gate
 
@@ -86,7 +86,18 @@ Flat solid #FF00FF magenta background.
 p2d.py frames RAW --rows 4 --cols 3 --frame <frame> --out DIR/work/<char>/walk@<P> --pack DIR --write-profile DIR/work/<char>/walk@<P>.profile.json
 ```
 
-`frames` must print `RESULT: PASS` before you continue. After cutting walk frames, the `face` gate in step 4 is REQUIRED on at least one down, one left and one right frame.
+`frames` must print `RESULT: PASS` before you continue. Then, in this order:
+
+1. Run `face` (step 4) on the standing donors (column 1 of each row with a face); repair them with `face --stamp` or `touch` first.
+2. REQUIRED: lock the head to the standing frame of each direction. N is the rows from the top of the hair through the chin on the standing frame; the default `--head-bob 1` matches RM2000.
+
+```
+p2d.py headlock DIR/work/<char>/walk@<P> --head-rows N
+```
+
+   It reports `HEAD_DRIFT_BEFORE` and `HEAD_DRIFT_AFTER` and copies generated pixels only.
+3. Run the `face` gate (step 4) on at least one down, one left and one right frame.
+4. Build the charset and GIF (step 5).
 
 Inspect the raw first if equal-cell cuts report clipped figures. When every figure is intact and fully empty background gaps separate rows and columns, try `--layout whitespace`; missing or ambiguous gaps must fail, not be guessed. It does not permit relaxed QC. Set one shared `--subject-height` with room for the widest walking pose (24 in a 24x32 frame is a starting point); never scale individual frames. If anchor or scale drift remains, regenerate using the guide rather than use `--loose` for walking.
 

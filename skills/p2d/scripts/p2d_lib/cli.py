@@ -23,6 +23,7 @@ COMMANDS = {
     "frames": ("frames", "Cut a generated grid into shared-scale, anchored animation frames + QC."),
     "anchor": ("anchor", "Repeat a native sprite into equal key-color cells with exact integer scaling."),
     "gif": ("frames", "Animated GIF preview from frame PNGs."),
+    "headlock": ("headlock", "Copy standing heads to step frames with a fixed walking bob."),
     "charset": ("charset", "Assemble an RPG Maker character sheet (2000, VX Ace, MV/MZ)."),
     "face": ("face", "Face gate: listed eye pixels must be dark, opaque and on skin; writes a head crop."),
     "touch": ("edit", "Set or clear individual logical pixels (small face/detail repairs) within the palette."),
