@@ -70,6 +70,143 @@ def run_frames(raw: str, out_dir: str, *extra: str):
     )
 
 
+class HeadlockCommandTest(unittest.TestCase):
+    def setUp(self):
+        self.d = h.tmp()
+        self.addCleanup(shutil.rmtree, self.d)
+        self.frames = os.path.join(self.d, "frames")
+        os.makedirs(self.frames)
+        self.original = {}
+        for r in range(ROWS):
+            for c in range(COLS):
+                frame = np.zeros((12, 8, 4), dtype=np.uint8)
+                top = 2 + r % 2
+                frame[top:top + 3, 2:6] = [40 + r, 80 + c * 30, 120, 255]
+                frame[top + 1, 3] = [200, 180, 100 + c, 128]
+                frame[top + 3:, 1:7] = [20 + c, 30 + r, 90, 255]
+                if c != 1:
+                    frame[0, 0] = [255, 10, 20, 255]
+                name = "r%dc%d.png" % (r, c)
+                self.original[name] = frame
+                h.save(frame, os.path.join(self.frames, name))
+        self.meta = os.path.join(self.frames, "frames.json")
+        with open(self.meta, "w") as fh:
+            json.dump({"rows": ROWS, "cols": COLS, "result": "PASS"}, fh)
+
+    def snapshot(self, directory):
+        files = {}
+        if os.path.isdir(directory):
+            for base, _, names in os.walk(directory):
+                for name in names:
+                    path = os.path.join(base, name)
+                    with open(path, "rb") as fh:
+                        files[os.path.relpath(path, directory)] = fh.read()
+        return files
+
+    def assert_locked(self, directory, bob):
+        drifts = []
+        for r in range(ROWS):
+            donor = self.original["r%dc1.png" % r]
+            top = int(np.flatnonzero(donor[..., 3].any(axis=1))[0])
+            band = donor[top:top + 3]
+            self.assertTrue(np.array_equal(h.load(os.path.join(directory, "r%dc1.png" % r)), donor))
+            for c in (0, 2):
+                name = "r%dc%d.png" % (r, c)
+                frame = h.load(os.path.join(directory, name))
+                start, end = top + bob, top + bob + 3
+                self.assertTrue(np.array_equal(frame[start:end], band), name)
+                self.assertFalse(frame[:start].any(), name)
+                self.assertTrue(np.array_equal(frame[end:], self.original[name][end:]), name)
+                drifts.append(float(np.any(self.original[name][start:end] != band, axis=2).mean()))
+        return float(np.mean(drifts))
+
+    def test_default_bob_copies_head_and_preserves_body_and_metadata(self):
+        code, so, se = h.run_cli("headlock", self.frames, "--head-rows", "3")
+        self.assertEqual(code, 0, so + se)
+        drift = self.assert_locked(self.frames, 1)
+        kv = h.kv(so)
+        self.assertGreater(float(kv["HEAD_DRIFT_BEFORE"]), 0)
+        self.assertEqual(kv["HEAD_DRIFT_BEFORE"], "%.4f" % drift)
+        self.assertEqual(float(kv["HEAD_DRIFT_AFTER"]), 0)
+        self.assertEqual(kv["HEAD_ROWS"], "3")
+        self.assertEqual(kv["HEAD_BOB"], "1")
+        self.assertEqual(kv["LOCKED_FRAMES"], "8")
+        self.assertEqual(kv["OUT"], self.frames)
+        self.assertEqual(kv["RESULT"], "PASS")
+        with open(self.meta) as fh:
+            meta = json.load(fh)
+        self.assertEqual(meta["head_lock"]["rows"], 3)
+        self.assertEqual(meta["head_lock"]["bob"], 1)
+        self.assertAlmostEqual(meta["head_lock"]["drift_before"], drift, places=4)
+        self.assertEqual(meta["result"], "PASS")
+
+    def test_zero_bob_and_inferred_grid_without_metadata(self):
+        os.unlink(self.meta)
+        code, so, se = h.run_cli("headlock", self.frames, "--head-rows", "3", "--head-bob", "0")
+        self.assertEqual(code, 0, so + se)
+        self.assert_locked(self.frames, 0)
+        self.assertEqual(h.kv(so)["HEAD_BOB"], "0")
+        self.assertFalse(os.path.exists(self.meta))
+
+    def test_out_copies_every_file_without_changing_source(self):
+        os.makedirs(os.path.join(self.frames, "extras"))
+        with open(os.path.join(self.frames, "extras", "note.txt"), "w") as fh:
+            fh.write("keep ancillary files")
+        before = self.snapshot(self.frames)
+        out = os.path.join(self.d, "locked")
+        code, so, se = h.run_cli("headlock", self.frames, "--head-rows", "3", "--out", out)
+        self.assertEqual(code, 0, so + se)
+        self.assertEqual(self.snapshot(self.frames), before)
+        self.assert_locked(out, 1)
+        self.assertEqual(set(self.snapshot(out)), set(before))
+        self.assertEqual(self.snapshot(out)["extras/note.txt"], before["extras/note.txt"])
+        with open(os.path.join(out, "frames.json")) as fh:
+            self.assertEqual(json.load(fh)["head_lock"]["bob"], 1)
+
+    def test_errors_leave_source_and_output_unchanged(self):
+        cases = ("missing-dir", "missing-frame", "columns", "zero-rows", "negative-rows",
+                 "negative-bob", "overflow", "empty-donor", "different-size",
+                 "inferred-columns", "inferred-missing")
+        for case in cases:
+            with self.subTest(case=case):
+                directory = os.path.join(self.d, case)
+                shutil.copytree(self.frames, directory)
+                args = ["--head-rows", "3"]
+                if case == "missing-dir":
+                    shutil.rmtree(directory)
+                elif case in ("missing-frame", "inferred-missing"):
+                    os.unlink(os.path.join(directory, "r3c2.png"))
+                elif case == "columns":
+                    with open(os.path.join(directory, "frames.json"), "w") as fh:
+                        json.dump({"rows": ROWS, "cols": 2}, fh)
+                elif case in ("zero-rows", "negative-rows"):
+                    args = ["--head-rows", "0" if case == "zero-rows" else "-1"]
+                elif case == "negative-bob":
+                    args += ["--head-bob", "-1"]
+                elif case == "overflow":
+                    args += ["--head-bob", "8"]
+                elif case == "empty-donor":
+                    h.save(np.zeros((12, 8, 4), np.uint8), os.path.join(directory, "r3c1.png"))
+                elif case == "different-size":
+                    h.save(np.zeros((13, 8, 4), np.uint8), os.path.join(directory, "r3c2.png"))
+                elif case == "inferred-columns":
+                    h.save(self.original["r0c0.png"], os.path.join(directory, "r0c3.png"))
+                if case.startswith("inferred-"):
+                    os.unlink(os.path.join(directory, "frames.json"))
+                out = os.path.join(self.d, case + "-out")
+                os.makedirs(out)
+                with open(os.path.join(out, "keep.txt"), "w") as fh:
+                    fh.write("untouched")
+                before, before_out = self.snapshot(directory), self.snapshot(out)
+                code, so, se = h.run_cli("headlock", directory, *args, "--out", out)
+                self.assertEqual(code, 2, so + se)
+                self.assertIn("ERROR:", se)
+                self.assertNotIn("unknown command", se)
+                self.assertNotIn("Traceback", se)
+                self.assertEqual(self.snapshot(directory), before)
+                self.assertEqual(self.snapshot(out), before_out)
+
+
 class FramesCommandTest(unittest.TestCase):
     def uneven_raw(self) -> np.ndarray:
         raw = np.zeros((480, 250, 4), dtype=np.uint8)
