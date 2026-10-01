@@ -32,6 +32,10 @@ Eye gate at every px applies to front/side, not the back: both eyes (one in side
 
 Three columns per row: step A, standing, step B. Walking plays stand, A, stand, B. A `!` prefix (charset `--object`) is for objects that should sit on the grid without the upward offset.
 
+Inspect the actual body poses, not only the head/face gates. At native size identify the lowest grounded boot in A and B: in front view they must alternate across the standing boots' midpoint, rather than lifting the same leg twice. For compact 16px walking, compare side-view contact-center travel against the reference; about 2-3 native pixels is a useful target, while a 6px spread can read as kicking. Contact centers are a diagnostic proxy, not proof of a plausible gait: inspect bent knees, overlapping boots and opposing arms as well.
+
+Track a central torso landmark such as the back tunic hem, excluding a trailing side sash. Its distance from the head should remain coherent (within about 1px for compact 16px walking); a hem rising while the head bobs down compresses the body. Redraw the limbs and cloth rather than shifting the whole body to satisfy this measurement. After headlock, inspect the last copied head row and first body row together at 8x: the collar/neck must connect, with intact shoulders and no stray skin or cloth patches. When the copied head band ends at y20, inspect y20/21 explicitly.
+
 ## Flow
 
 ### 1. Master (front idle)
@@ -98,6 +102,10 @@ p2d.py headlock DIR/work/<char>/walk@<P> --head-rows N
    It reports `HEAD_DRIFT_BEFORE` and `HEAD_DRIFT_AFTER` and copies generated pixels only.
 3. Run the `face` gate (step 4) on at least one down, one left and one right frame.
 4. Build the charset and GIF (step 5).
+
+Replay all four directions at native size and 8x beside the standing donors and the user's gait reference. Include the complete stand, A, stand, B loop, not only A/B stills. Reject awkward alternating poses, abrupt sleeve/sash changes or a compressing torso even when frames, headlock and face all pass. When preserving approved standing donors, require strict `frames` PASS and one shared subject scale for the delivered composition; verify the original standing PNG hashes afterward.
+
+A rejected raw may supply intact step cells only when its failed cells are discarded entirely: retain the raw FAIL and cut bounds, prove every retained step has no source-edge contact or clamping at one shared pitch, and record which original donor replaces each standing cell. Compose existing pixels without drawing or per-frame scaling, align the step colors to the donor palette, then validate the padded composition under unchanged strict gates and prove pixel preservation across reprocessing. Uniform validation padding is not source-containment proof. After headlock, compare body pixels to the palette-normalized source, and require the same face, color, seam and complete-loop checks; a composition PASS never relabels the original raw PASS.
 
 Inspect the raw first if equal-cell cuts report clipped figures. When every figure is intact and fully empty background gaps separate rows and columns, try `--layout whitespace`; missing or ambiguous gaps must fail, not be guessed. It does not permit relaxed QC. Set one shared `--subject-height` with room for the widest walking pose (24 in a 24x32 frame is a starting point); never scale individual frames. If anchor or scale drift remains, regenerate using the guide rather than use `--loose` for walking.
 
